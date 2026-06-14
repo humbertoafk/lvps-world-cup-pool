@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNavigation } from "@/components/BottomNavigation";
+import { MessagesArea } from "@/components/MessagesArea";
 import { RulesCard } from "@/components/RulesCard";
 import { StatusSection } from "@/components/StatusSection";
 import { ui } from "@/styles/ui";
@@ -1020,19 +1021,11 @@ export default function Home() {
         <div className={ui.container}>
           <AppHeader loggedUser={loggedUser} onLogout={logout} />
 
-          {message && <p className={ui.message}>{message}</p>}
-
-          {isSubmitted && (<p className={ui.successMessage}>
-            
-              Quiniela enviada. Tus picks están bloqueados.
-            </p>
-          )}
-
-          {!isQuinielaOpen && (
-            <p className={ui.dangerMessage}>
-              La quiniela está cerrada. Ya no se pueden guardar ni enviar picks.
-            </p>
-          )}
+          <MessagesArea
+            message={message}
+            isSubmitted={isSubmitted}
+            isQuinielaOpen={isQuinielaOpen}
+          />
 
           <RulesCard />
 

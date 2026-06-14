@@ -13,12 +13,13 @@ import { ResultsSection } from "@/components/ResultsSection";
 import { SubmittedPredictionsSection } from "@/components/SubmittedPredictionsSection";
 import { RulesCard } from "@/components/RulesCard";
 import { StatusSection } from "@/components/StatusSection";
+import { getGroupOrderIndex } from "@/utils/groups";
+import { calculateGroupBreakdown } from "@/utils/scoring";
 import { ui } from "@/styles/ui";
 import type {
   Group,
   GroupResults,
   Player,
-  PositionBreakdown,
   Predictions,
   RankingRow,
   SubmittedPredictionRow,
@@ -26,26 +27,6 @@ import type {
 } from "@/types/quiniela";
 import type { SectionId } from "@/types/sections";
 import bcrypt from "bcryptjs";
-
-const GROUP_ORDER = [
-  "Grupo A",
-  "Grupo B",
-  "Grupo C",
-  "Grupo D",
-  "Grupo E",
-  "Grupo F",
-  "Grupo G",
-  "Grupo H",
-  "Grupo I",
-  "Grupo J",
-  "Grupo K",
-  "Grupo L",
-];
-
-function getGroupOrderIndex(groupName: string) {
-  const index = GROUP_ORDER.indexOf(groupName);
-  return index === -1 ? 999 : index;
-}
 
 export default function Home() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -297,57 +278,6 @@ export default function Home() {
     if (!result) return false;
 
     return Boolean(result[1] && result[2] && result[3] && result[4]);
-  }
-
-  function calculateGroupBreakdown(
-    prediction: Record<number, string | null | undefined>,
-    result: Record<number, string | null | undefined>
-  ) {
-    let totalPoints = 0;
-
-    const positions = [1, 2, 3, 4];
-
-    const breakdown: PositionBreakdown[] = positions.map((position) => {
-      const predictedTeamId = prediction[position] || null;
-      const realTeamId = result[position] || null;
-
-      let points = 0;
-      let reason: PositionBreakdown["reason"] = "wrong";
-
-      if (predictedTeamId && realTeamId && predictedTeamId === realTeamId) {
-        points = 3;
-        reason = "exact";
-      } else if (
-        position === 1 &&
-        predictedTeamId &&
-        predictedTeamId === result[2]
-      ) {
-        points = 1;
-        reason = "top2_inverted";
-      } else if (
-        position === 2 &&
-        predictedTeamId &&
-        predictedTeamId === result[1]
-      ) {
-        points = 1;
-        reason = "top2_inverted";
-      }
-
-      totalPoints += points;
-
-      return {
-        position,
-        predicted_team_id: predictedTeamId,
-        real_team_id: realTeamId,
-        points,
-        reason,
-      };
-    });
-
-    return {
-      totalPoints,
-      breakdown,
-    };
   }
 
   async function loadRanking(

@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { sectionButtonClass, ui } from "@/styles/ui";
+import { BottomNavigation } from "@/components/BottomNavigation";
+import { ui } from "@/styles/ui";
+import type { SectionId } from "@/types/sections";
 import bcrypt from "bcryptjs";
 
 type Player = {
@@ -63,14 +65,6 @@ type SubmittedPredictionRow = {
   third_team_id: string | null;
   fourth_team_id: string | null;
 };
-
-type SectionId =
-  | "resumen"
-  | "ranking"
-  | "resultados"
-  | "pronosticos"
-  | "miQuiniela"
-  | "admin";
 
 const GROUP_ORDER = [
   "Grupo A",
@@ -342,10 +336,6 @@ export default function Home() {
     if (!result) return false;
 
     return Boolean(result[1] && result[2] && result[3] && result[4]);
-  }
-
-  function getSectionButtonClass(sectionId: SectionId) {
-    return sectionButtonClass(activeSection === sectionId);
   }
 
   function calculateGroupBreakdown(
@@ -1514,53 +1504,11 @@ export default function Home() {
           )}
         </div>
 
-        <nav className={ui.bottomNav}>
-          <div className={ui.bottomNavGrid}>
-            <button
-              onClick={() => setActiveSection("resumen")}
-              className={getSectionButtonClass("resumen")}
-            >
-              Resumen
-            </button>
-
-            <button
-              onClick={() => setActiveSection("ranking")}
-              className={getSectionButtonClass("ranking")}
-            >
-              Ranking
-            </button>
-
-            <button
-              onClick={() => setActiveSection("resultados")}
-              className={getSectionButtonClass("resultados")}
-            >
-              Resultados
-            </button>
-
-            <button
-              onClick={() => setActiveSection("pronosticos")}
-              className={getSectionButtonClass("pronosticos")}
-            >
-              Picks
-            </button>
-
-            <button
-              onClick={() => setActiveSection("miQuiniela")}
-              className={getSectionButtonClass("miQuiniela")}
-            >
-              Quiniela
-            </button>
-
-            {isAdmin && (
-              <button
-                onClick={() => setActiveSection("admin")}
-                className={getSectionButtonClass("admin")}
-              >
-                Admin
-              </button>
-            )}
-          </div>
-        </nav>
+        <BottomNavigation
+          activeSection={activeSection}
+          isAdmin={isAdmin}
+          onSectionChange={(section) => setActiveSection(section)}
+        />
       </main>
     );
   }

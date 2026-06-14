@@ -43,6 +43,17 @@ type RankingRow = {
   details: RankingDetail[];
 };
 
+type SubmittedPredictionRow = {
+  player_id: string;
+  player_name: string;
+  group_id: string;
+  group_name: string;
+  first_team_id: string | null;
+  second_team_id: string | null;
+  third_team_id: string | null;
+  fourth_team_id: string | null;
+};
+
 const GROUP_ORDER = [
   "Grupo A",
   "Grupo B",
@@ -75,6 +86,9 @@ export default function Home() {
   const [predictions, setPredictions] = useState<Predictions>({});
   const [groupResults, setGroupResults] = useState<GroupResults>({});
   const [ranking, setRanking] = useState<RankingRow[]>([]);
+  const [submittedPredictions, setSubmittedPredictions] = useState<
+  SubmittedPredictionRow[]
+  >([]);
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -100,8 +114,9 @@ export default function Home() {
       setLoggedPlayerId(savedPlayerId);
       setIsAdmin(savedIsAdmin === "true");
 
-      loadSavedPredictions(savedPlayerId);
-      loadPlayerStatus(savedPlayerId);
+    loadSavedPredictions(savedPlayerId);
+    loadPlayerStatus(savedPlayerId);
+    loadSubmittedPredictions();
     }
   }, []);
 
@@ -256,6 +271,17 @@ export default function Home() {
     }));
   }
 
+  function getTeamName(teamId: string | null) {
+    if (!teamId) return "-";
+
+    const allTeams = Object.values(teamsByGroup).flat();
+    const team = allTeams.find((item) => item.id === teamId);
+
+    if (!team) return "-";
+
+    return `${team.flag_emoji || ""} ${team.name}`;
+  }
+
   function calculateGroupPoints(
     prediction: Record<number, string | null | undefined>,
     result: Record<number, string | null | undefined>
@@ -400,6 +426,64 @@ export default function Home() {
     setRanking(rankingRows);
   }
 
+  async function loadSubmittedPredictions() {
+    const { data, error } = await supabase
+      .from("group_predictions")
+      .select(`
+        player_id,
+        group_id,
+        first_team_id,
+        second_team_id,
+        third_team_id,
+        fourth_team_id,
+        players (
+          name,
+          submitted
+        ),
+        groups (
+          name
+        )
+      `);
+
+    if (error) {
+      console.error(error);
+      setMessage("Error al cargar pronósticos enviados");
+      return;
+    }
+
+    const rows: SubmittedPredictionRow[] = [];
+
+    data?.forEach((prediction) => {
+      const playerData = Array.isArray(prediction.players)
+        ? prediction.players[0]
+        : prediction.players;
+
+      const groupData = Array.isArray(prediction.groups)
+        ? prediction.groups[0]
+        : prediction.groups;
+
+      if (!playerData || !groupData) return;
+      if (!playerData.submitted) return;
+
+      rows.push({
+        player_id: prediction.player_id,
+        player_name: playerData.name,
+        group_id: prediction.group_id,
+        group_name: groupData.name,
+        first_team_id: prediction.first_team_id,
+        second_team_id: prediction.second_team_id,
+        third_team_id: prediction.third_team_id,
+        fourth_team_id: prediction.fourth_team_id,
+      });
+    });
+
+    const orderedRows = rows.sort(
+      (a, b) => GROUP_ORDER.indexOf(a.group_name) - GROUP_ORDER.indexOf(b.group_name)
+    );
+
+    setSubmittedPredictions(orderedRows);
+  }
+
   async function createPin() {
     if (!player) return;
 
@@ -462,6 +546,10 @@ export default function Home() {
     setIsAdmin(player.is_admin);
 
     await loadSavedPredictions(player.id);
+
+    if (player.submitted) {
+      await loadSubmittedPredictions();
+    }
 
     setPin("");
     setMessage("");
@@ -712,6 +800,7 @@ export default function Home() {
     );
 
     await loadRanking(groupResults);
+    await loadSubmittedPredictions();
 
     setMessage("Quiniela enviada correctamente. Ya no puedes modificarla.");
   }
@@ -746,7 +835,7 @@ export default function Home() {
 
           <div className="mb-6 rounded border bg-gray-50 p-4">
             <h2 className="mb-2 font-bold">Reglas de puntuación</h2>
-                  
+
             <div className="space-y-1 text-sm text-gray-700">
               <p>+3 pts por cada posición exacta del grupo.</p>
               <p>
@@ -891,6 +980,60 @@ export default function Home() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mb-6 rounded border p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-bold">Pronósticos enviados</h2>
+                    
+              <button
+                onClick={loadSubmittedPredictions}
+                className="rounded border px-3 py-1 text-xs"
+              >
+                Actualizar
+              </button>
+            </div>
+                    
+            {!isSubmitted ? (
+              <p className="text-sm text-gray-500">
+                Envía tu quiniela final para poder ver los pronósticos enviados.
+              </p>
+            ) : submittedPredictions.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                Todavía no hay pronósticos enviados.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {players
+                  .filter((p) => p.submitted)
+                  .map((submittedPlayer) => {
+                    const playerPredictions = submittedPredictions.filter(
+                      (prediction) => prediction.player_id === submittedPlayer.id
+                    );
+                  
+                    return (
+                      <div key={submittedPlayer.id} className="rounded border p-3">
+                        <h3 className="mb-2 font-semibold">{submittedPlayer.name}</h3>
+                    
+                        <div className="space-y-3">
+                          {playerPredictions.map((prediction) => (
+                            <div key={prediction.group_id} className="text-sm">
+                              <p className="font-medium">{prediction.group_name}</p>
+                          
+                              <div className="mt-1 space-y-1 text-xs text-gray-600">
+                                <p>1. {getTeamName(prediction.first_team_id)}</p>
+                                <p>2. {getTeamName(prediction.second_team_id)}</p>
+                                <p>3. {getTeamName(prediction.third_team_id)}</p>
+                                <p>4. {getTeamName(prediction.fourth_team_id)}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             )}
           </div>

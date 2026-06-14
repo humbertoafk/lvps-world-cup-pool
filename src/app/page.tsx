@@ -77,6 +77,10 @@ export default function Home() {
     setPlayers(data || []);
   }
 
+  async function refreshPlayers() {
+  await loadPlayers();
+  }
+
   async function loadGroups() {
     const { data, error } = await supabase
       .from("groups")
@@ -395,6 +399,19 @@ export default function Home() {
     }
 
     setIsSubmitted(true);
+
+    setPlayers((prev) =>
+      prev.map((p) =>
+        p.id === loggedPlayerId
+          ? {
+              ...p,
+              submitted: true,
+              submitted_at: now,
+            }
+          : p
+      )
+    );
+
     setMessage("Quiniela enviada correctamente. Ya no puedes modificarla.");
   }
 
@@ -425,6 +442,40 @@ export default function Home() {
               Quiniela enviada. Tus picks están bloqueados.
             </p>
           )}
+
+          <div className="mb-6 rounded border p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-bold">Estado de entregas</h2>
+                  
+              <button
+                onClick={refreshPlayers}
+                className="rounded border px-3 py-1 text-xs"
+              >
+                Actualizar
+              </button>
+            </div>
+                  
+            <div className="space-y-2">
+              {players.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <span>{p.name}</span>
+              
+                  {p.submitted ? (
+                    <span className="font-semibold text-green-700">
+                      ✅ Enviado
+                    </span>
+                  ) : (
+                    <span className="text-gray-500">
+                      ⏳ Pendiente
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
 
           {groups.length === 0 && (
             <p className="text-sm text-gray-600">No hay grupos cargados.</p>

@@ -301,6 +301,14 @@ export default function Home() {
     return `${team.flag_emoji || ""} ${team.name}`;
   }
 
+  function hasCompleteGroupResult(groupId: string) {
+    const result = groupResults[groupId];
+
+    if (!result) return false;
+
+    return Boolean(result[1] && result[2] && result[3] && result[4]);
+  }
+
   function calculateGroupPoints(
     prediction: Record<number, string | null | undefined>,
     result: Record<number, string | null | undefined>
@@ -1033,18 +1041,18 @@ export default function Home() {
 
               <div className="mb-4 rounded border bg-white p-3">
                 <h3 className="mb-2 font-semibold">Desbloquear jugador</h3>
-                            
+
                 <p className="mb-3 text-xs text-gray-600">
                   Esto conserva sus picks, pero permite que el jugador vuelva a editarlos.
                 </p>
-                            
+
                 <select
                   value={adminSelectedPlayerId}
                   onChange={(e) => setAdminSelectedPlayerId(e.target.value)}
                   className="mb-2 w-full rounded border p-2 text-sm"
                 >
                   <option value="">Selecciona jugador</option>
-                            
+
                   {players.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name} {p.submitted ? "(enviado)" : "(pendiente)"}
@@ -1241,6 +1249,57 @@ export default function Home() {
                   })}
               </div>
             )}
+          </div>
+
+          <div className="mb-6 rounded border p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-bold">Resultados oficiales</h2>
+                    
+              <button
+                onClick={async () => {
+                  const loadedResults = await loadGroupResults();
+                  await loadRanking(loadedResults, groups);
+                }}
+                className="rounded border px-3 py-1 text-xs"
+              >
+                Actualizar
+              </button>
+            </div>
+              
+            <div className="space-y-4">
+              {groups.map((group) => {
+                const result = groupResults[group.id];
+              
+                return (
+                  <div key={group.id} className="rounded border p-3 text-sm">
+                    <div className="mb-2 flex items-center justify-between">
+                      <h3 className="font-semibold">{group.name}</h3>
+                
+                      {hasCompleteGroupResult(group.id) ? (
+                        <span className="text-xs font-semibold text-green-700">
+                          Capturado
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-500">Pendiente</span>
+                      )}
+                    </div>
+                    
+                    {hasCompleteGroupResult(group.id) && result ? (
+                      <div className="space-y-1 text-xs text-gray-600">
+                        <p>1. {getTeamName(result[1])}</p>
+                        <p>2. {getTeamName(result[2])}</p>
+                        <p>3. {getTeamName(result[3])}</p>
+                        <p>4. {getTeamName(result[4])}</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500">
+                        Resultado oficial todavía no capturado.
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {groups.length === 0 && (

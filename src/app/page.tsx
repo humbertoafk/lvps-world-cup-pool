@@ -28,6 +28,13 @@ type Team = {
 type Predictions = Record<string, Record<number, string>>;
 type GroupResults = Record<string, Record<number, string>>;
 
+type RankingRow = {
+  player_id: string;
+  player_name: string;
+  total_points: number;
+  submitted: boolean;
+};
+
 export default function Home() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState("");
@@ -44,6 +51,7 @@ export default function Home() {
   const [teamsByGroup, setTeamsByGroup] = useState<Record<string, Team[]>>({});
   const [predictions, setPredictions] = useState<Predictions>({});
   const [groupResults, setGroupResults] = useState<GroupResults>({});
+  const [ranking, setRanking] = useState<RankingRow[]>([]);
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -52,7 +60,10 @@ export default function Home() {
     loadPlayers();
     loadGroups();
     loadTeams();
-    loadGroupResults();
+
+    loadGroupResults().then((loadedResults) => {
+      loadRanking(loadedResults);
+    });
   }, []);
 
   useEffect(() => {
@@ -135,7 +146,7 @@ export default function Home() {
     if (error) {
       console.error(error);
       setMessage("Error al cargar resultados oficiales");
-      return;
+      return {};
     }
 
     const saved: GroupResults = {};
@@ -150,6 +161,7 @@ export default function Home() {
     });
 
     setGroupResults(saved);
+    return saved;
   }
 
   async function loadSavedPredictions(playerId: string) {
@@ -181,7 +193,7 @@ export default function Home() {
   async function loadPlayerStatus(playerId: string) {
     const { data, error } = await supabase
       .from("players")
-      .select("submitted")
+      .select("submitted,is_admin")
       .eq("id", playerId)
       .single();
 
@@ -191,6 +203,8 @@ export default function Home() {
     }
 
     setIsSubmitted(data.submitted);
+    setIsAdmin(data.is_admin);
+    localStorage.setItem("isAdmin", String(data.is_admin));
   }
 
   function updatePrediction(groupId: string, position: number, teamId: string) {
@@ -211,6 +225,99 @@ export default function Home() {
         [position]: teamId,
       },
     }));
+  }
+
+  function calculateGroupPoints(
+    prediction: Record<number, string | null | undefined>,
+    result: Record<number, string | null | undefined>
+  ) {
+    let points = 0;
+
+    const predictedFirst = prediction[1];
+    const predictedSecond = prediction[2];
+
+    const realFirst = result[1];
+    const realSecond = result[2];
+
+    if (!predictedFirst || !predictedSecond || !realFirst || !realSecond) {
+      return 0;
+    }
+
+    if (predictedFirst === realFirst) {
+      points += 3;
+    } else if (predictedFirst === realSecond) {
+      points += 1;
+    }
+
+    if (predictedSecond === realSecond) {
+      points += 3;
+    } else if (predictedSecond === realFirst) {
+      points += 1;
+    }
+
+    return points;
+  }
+
+  async function loadRanking(resultsOverride?: GroupResults) {
+    const resultsToUse = resultsOverride || groupResults;
+
+    const { data: predictionsData, error: predictionsError } = await supabase
+      .from("group_predictions")
+      .select(`
+        player_id,
+        group_id,
+        first_team_id,
+        second_team_id,
+        players (
+          name,
+          submitted
+        )
+      `);
+
+    if (predictionsError) {
+      console.error(predictionsError);
+      setMessage("Error al cargar ranking");
+      return;
+    }
+
+    const pointsByPlayer: Record<string, RankingRow> = {};
+
+    predictionsData?.forEach((prediction) => {
+      const result = resultsToUse[prediction.group_id];
+
+      if (!result) return;
+
+      const playerData = Array.isArray(prediction.players)
+        ? prediction.players[0]
+        : prediction.players;
+
+      if (!playerData) return;
+      if (!playerData.submitted) return;
+
+      const groupPrediction = {
+        1: prediction.first_team_id,
+        2: prediction.second_team_id,
+      };
+
+      const points = calculateGroupPoints(groupPrediction, result);
+
+      if (!pointsByPlayer[prediction.player_id]) {
+        pointsByPlayer[prediction.player_id] = {
+          player_id: prediction.player_id,
+          player_name: playerData.name,
+          total_points: 0,
+          submitted: playerData.submitted,
+        };
+      }
+
+      pointsByPlayer[prediction.player_id].total_points += points;
+    });
+
+    const rankingRows = Object.values(pointsByPlayer).sort(
+      (a, b) => b.total_points - a.total_points
+    );
+
+    setRanking(rankingRows);
   }
 
   async function createPin() {
@@ -293,7 +400,6 @@ export default function Home() {
     setConfirmPin("");
     setMessage("");
     setPredictions({});
-    setGroupResults({});
     setIsSubmitted(false);
     setIsAdmin(false);
   }
@@ -390,6 +496,16 @@ export default function Home() {
       return;
     }
 
+    const updatedResults: GroupResults = {
+      ...groupResults,
+      [groupId]: {
+        1: first,
+        2: second,
+        3: third,
+        4: fourth,
+      },
+    };
+
     const { error } = await supabase.from("group_results").upsert(
       {
         group_id: groupId,
@@ -409,6 +525,9 @@ export default function Home() {
       setMessage("Error al guardar resultado oficial");
       return;
     }
+
+    setGroupResults(updatedResults);
+    await loadRanking(updatedResults);
 
     setMessage("Resultado oficial guardado correctamente");
   }
@@ -512,6 +631,8 @@ export default function Home() {
       )
     );
 
+    await loadRanking(groupResults);
+
     setMessage("Quiniela enviada correctamente. Ya no puedes modificarla.");
   }
 
@@ -550,6 +671,13 @@ export default function Home() {
               <p className="mb-4 text-sm text-gray-700">
                 Captura aquí los resultados oficiales de cada grupo.
               </p>
+
+              <button
+                onClick={() => loadRanking()}
+                className="mb-4 w-full rounded bg-black p-2 text-sm text-white"
+              >
+                Actualizar ranking
+              </button>
 
               <div className="space-y-4">
                 {groups.map((group) => (
@@ -621,6 +749,42 @@ export default function Home() {
                 </div>
               ))}
             </div>
+          </div>
+
+          <div className="mb-6 rounded border p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-bold">Ranking</h2>
+
+              <button
+                onClick={() => loadRanking()}
+                className="rounded border px-3 py-1 text-xs"
+              >
+                Actualizar
+              </button>
+            </div>
+
+            {ranking.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                Todavía no hay puntos calculados.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {ranking.map((row, index) => (
+                  <div
+                    key={row.player_id}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <span>
+                      {index + 1}. {row.player_name}
+                    </span>
+
+                    <span className="font-semibold">
+                      {row.total_points} pts
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {groups.length === 0 && (

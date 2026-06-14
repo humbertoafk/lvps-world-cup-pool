@@ -36,12 +36,6 @@ import {
   saveSession,
 } from "@/utils/session";
 import {
-  groupTeamsByGroup,
-  mapGroupResults,
-  mapSavedPredictions,
-  mapSubmittedPredictions,
-} from "@/utils/supabaseMappers";
-import {
   fetchGroupResults,
   fetchGroups,
   fetchPlayerStatus,
@@ -51,6 +45,14 @@ import {
   fetchSubmittedPredictions,
   fetchTeamsByGroup,
 } from "@/services/quinielaReads";
+import {
+  markPlayerSubmitted,
+  saveGroupPredictionRow,
+  saveGroupResultRow,
+  unlockPlayerRows,
+  updatePlayerPinHash,
+  updateQuinielaOpenValue,
+} from "@/services/quinielaWrites";
 import type { SectionId } from "@/types/sections";
 import bcrypt from "bcryptjs";
 
@@ -346,12 +348,9 @@ export default function Home() {
 
     const hash = await bcrypt.hash(pin, 10);
 
-    const { error } = await supabase
-      .from("players")
-      .update({ pin_hash: hash })
-      .eq("id", player.id);
-
-    if (error) {
+    try {
+      await updatePlayerPinHash(player.id, hash);
+    } catch (error) {
       console.error(error);
       setMessage("Error al guardar PIN");
       return;
@@ -451,23 +450,20 @@ export default function Home() {
 
     const { first, second, third, fourth } = validatedGroup.values;
 
-    const { error } = await supabase.from("group_predictions").upsert(
-      {
-        player_id: loggedPlayerId,
-        group_id: groupId,
-        first_team_id: first,
-        second_team_id: second,
-        third_team_id: third,
-        fourth_team_id: fourth,
+    try {
+      await saveGroupPredictionRow({
+        playerId: loggedPlayerId,
+        groupId,
+        values: {
+          first,
+          second,
+          third,
+          fourth,
+        },
         submitted: false,
-        submitted_at: null,
-      },
-      {
-        onConflict: "player_id,group_id",
-      }
-    );
-
-    if (error) {
+        submittedAt: null,
+      });
+    } catch (error) {
       console.error(error);
       setMessage("Error al guardar el grupo");
       return;
@@ -505,21 +501,14 @@ export default function Home() {
       },
     };
 
-    const { error } = await supabase.from("group_results").upsert(
-      {
-        group_id: groupId,
-        first_team_id: first,
-        second_team_id: second,
-        third_team_id: third,
-        fourth_team_id: fourth,
-        saved_at: new Date().toISOString(),
-      },
-      {
-        onConflict: "group_id",
-      }
-    );
-
-    if (error) {
+    try {
+      await saveGroupResultRow(groupId, {
+        first,
+        second,
+        third,
+        fourth,
+      });
+    } catch (error) {
       console.error(error);
       setMessage("Error al guardar resultado oficial");
       return;
@@ -549,15 +538,9 @@ export default function Home() {
       return;
     }
 
-    const { error } = await supabase
-      .from("app_settings")
-      .update({
-        value: nextValue,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", "quiniela_open");
-
-    if (error) {
+    try {
+      await updateQuinielaOpenValue(nextValue);
+    } catch (error) {
       console.error(error);
       setMessage("Error al actualizar estado de quiniela");
       return;
@@ -597,31 +580,11 @@ export default function Home() {
       return;
     }
 
-    const { error: playerError } = await supabase
-      .from("players")
-      .update({
-        submitted: false,
-        submitted_at: null,
-      })
-      .eq("id", adminSelectedPlayerId);
-
-    if (playerError) {
-      console.error(playerError);
+    try {
+      await unlockPlayerRows(adminSelectedPlayerId);
+    } catch (error) {
+      console.error(error);
       setMessage("Error al desbloquear jugador");
-      return;
-    }
-
-    const { error: predictionsError } = await supabase
-      .from("group_predictions")
-      .update({
-        submitted: false,
-        submitted_at: null,
-      })
-      .eq("player_id", adminSelectedPlayerId);
-
-    if (predictionsError) {
-      console.error(predictionsError);
-      setMessage("Error al desbloquear pronósticos del jugador");
       return;
     }
 
@@ -700,39 +663,30 @@ export default function Home() {
     for (const group of groups) {
       const groupPrediction = predictions[group.id];
 
-      const { error } = await supabase.from("group_predictions").upsert(
-        {
-          player_id: loggedPlayerId,
-          group_id: group.id,
-          first_team_id: groupPrediction[1],
-          second_team_id: groupPrediction[2],
-          third_team_id: groupPrediction[3],
-          fourth_team_id: groupPrediction[4],
+      try {
+        await saveGroupPredictionRow({
+          playerId: loggedPlayerId,
+          groupId: group.id,
+          values: {
+            first: groupPrediction[1],
+            second: groupPrediction[2],
+            third: groupPrediction[3],
+            fourth: groupPrediction[4],
+          },
           submitted: true,
-          submitted_at: now,
-        },
-        {
-          onConflict: "player_id,group_id",
-        }
-      );
-
-      if (error) {
+          submittedAt: now,
+        });
+      } catch (error) {
         console.error(error);
         setMessage("Error al guardar tu quiniela final");
         return;
       }
     }
 
-    const { error: playerError } = await supabase
-      .from("players")
-      .update({
-        submitted: true,
-        submitted_at: now,
-      })
-      .eq("id", loggedPlayerId);
-
-    if (playerError) {
-      console.error(playerError);
+    try {
+      await markPlayerSubmitted(loggedPlayerId, now);
+    } catch (error) {
+      console.error(error);
       setMessage("Error al bloquear tu quiniela");
       return;
     }

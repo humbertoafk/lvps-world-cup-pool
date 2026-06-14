@@ -35,6 +35,12 @@ import {
   saveIsAdmin,
   saveSession,
 } from "@/utils/session";
+import {
+  groupTeamsByGroup,
+  mapGroupResults,
+  mapSavedPredictions,
+  mapSubmittedPredictions,
+} from "@/utils/supabaseMappers";
 import type { SectionId } from "@/types/sections";
 import bcrypt from "bcryptjs";
 
@@ -162,17 +168,7 @@ export default function Home() {
       return;
     }
 
-    const grouped: Record<string, Team[]> = {};
-
-    data?.forEach((team: Team) => {
-      if (!grouped[team.group_id]) {
-        grouped[team.group_id] = [];
-      }
-
-      grouped[team.group_id].push(team);
-    });
-
-    setTeamsByGroup(grouped);
+    setTeamsByGroup(groupTeamsByGroup((data || []) as Team[]));
   }
 
   async function loadGroupResults(): Promise<GroupResults> {
@@ -184,16 +180,7 @@ export default function Home() {
       return {};
     }
 
-    const saved: GroupResults = {};
-
-    data?.forEach((result) => {
-      saved[result.group_id] = {
-        1: result.first_team_id,
-        2: result.second_team_id,
-        3: result.third_team_id,
-        4: result.fourth_team_id,
-      };
-    });
+    const saved = mapGroupResults(data);
 
     setGroupResults(saved);
     return saved;
@@ -211,18 +198,7 @@ export default function Home() {
       return;
     }
 
-    const saved: Predictions = {};
-
-    data?.forEach((prediction) => {
-      saved[prediction.group_id] = {
-        1: prediction.first_team_id,
-        2: prediction.second_team_id,
-        3: prediction.third_team_id,
-        4: prediction.fourth_team_id,
-      };
-    });
-
-    setPredictions(saved);
+    setPredictions(mapSavedPredictions(data));
   }
 
   async function loadPlayerStatus(
@@ -402,38 +378,7 @@ export default function Home() {
       return;
     }
 
-    const rows: SubmittedPredictionRow[] = [];
-
-    data?.forEach((prediction) => {
-      const playerData = Array.isArray(prediction.players)
-        ? prediction.players[0]
-        : prediction.players;
-
-      const groupData = Array.isArray(prediction.groups)
-        ? prediction.groups[0]
-        : prediction.groups;
-
-      if (!playerData || !groupData) return;
-      if (!playerData.submitted) return;
-
-      rows.push({
-        player_id: prediction.player_id,
-        player_name: playerData.name,
-        group_id: prediction.group_id,
-        group_name: groupData.name,
-        first_team_id: prediction.first_team_id,
-        second_team_id: prediction.second_team_id,
-        third_team_id: prediction.third_team_id,
-        fourth_team_id: prediction.fourth_team_id,
-      });
-    });
-
-    const orderedRows = rows.sort(
-      (a, b) =>
-        getGroupOrderIndex(a.group_name) - getGroupOrderIndex(b.group_name)
-    );
-
-    setSubmittedPredictions(orderedRows);
+    setSubmittedPredictions(mapSubmittedPredictions(data));
   }
 
   async function createPin() {

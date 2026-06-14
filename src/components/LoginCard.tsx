@@ -34,6 +34,13 @@ export function LoginCard({
   onLogin,
   onCreatePin,
 }: LoginCardProps) {
+    function handlePinChange(value: string) {
+      onPinChange(value.replace(/\D/g, "").slice(0, 4));
+    }
+    
+    function handleConfirmPinChange(value: string) {
+      onConfirmPinChange(value.replace(/\D/g, "").slice(0, 4));
+    }
   return (
     <div className={ui.container}>
       <h1 className={ui.loginTitle}>🏆 LVP&apos;S</h1>
@@ -85,9 +92,11 @@ export function LoginCard({
             <div className="space-y-3">
               <input
                 type="password"
+                inputMode="numeric"
+                maxLength={4}
                 placeholder="Ingresa tu PIN"
                 value={pin}
-                onChange={(event) => onPinChange(event.target.value)}
+                onChange={(event) => handlePinChange(event.target.value)}
                 className={ui.input}
               />
 
@@ -99,17 +108,21 @@ export function LoginCard({
             <div className="space-y-3">
               <input
                 type="password"
+                inputMode="numeric"
+                maxLength={4}
                 placeholder="PIN de 4 dígitos"
                 value={pin}
-                onChange={(event) => onPinChange(event.target.value)}
+                onChange={(event) => handlePinChange(event.target.value)}
                 className={ui.input}
               />
 
               <input
                 type="password"
+                inputMode="numeric"
+                maxLength={4}
                 placeholder="Confirmar PIN"
                 value={confirmPin}
-                onChange={(event) => onConfirmPinChange(event.target.value)}
+                onChange={(event) => handleConfirmPinChange(event.target.value)}
                 className={ui.input}
               />
 

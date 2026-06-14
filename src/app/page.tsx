@@ -15,6 +15,8 @@ import { RulesCard } from "@/components/RulesCard";
 import { StatusSection } from "@/components/StatusSection";
 import { getGroupOrderIndex } from "@/utils/groups";
 import { calculateGroupBreakdown } from "@/utils/scoring";
+import { hasCompleteGroupResult as checkCompleteGroupResult } from "@/utils/results";
+import { getTeamNameFromGroups } from "@/utils/teams";
 import { ui } from "@/styles/ui";
 import type {
   Group,
@@ -262,22 +264,11 @@ export default function Home() {
   }
 
   function getTeamName(teamId: string | null | undefined) {
-    if (!teamId) return "-";
-
-    const allTeams = Object.values(teamsByGroup).flat();
-    const team = allTeams.find((item) => item.id === teamId);
-
-    if (!team) return "-";
-
-    return `${team.flag_emoji || ""} ${team.name}`;
+    return getTeamNameFromGroups(teamsByGroup, teamId);
   }
 
   function hasCompleteGroupResult(groupId: string) {
-    const result = groupResults[groupId];
-
-    if (!result) return false;
-
-    return Boolean(result[1] && result[2] && result[3] && result[4]);
+    return checkCompleteGroupResult(groupResults, groupId);
   }
 
   async function loadRanking(

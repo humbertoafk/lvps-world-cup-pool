@@ -41,6 +41,16 @@ import {
   mapSavedPredictions,
   mapSubmittedPredictions,
 } from "@/utils/supabaseMappers";
+import {
+  fetchGroupResults,
+  fetchGroups,
+  fetchPlayerStatus,
+  fetchPlayers,
+  fetchQuinielaOpen,
+  fetchSavedPredictions,
+  fetchSubmittedPredictions,
+  fetchTeamsByGroup,
+} from "@/services/quinielaReads";
 import type { SectionId } from "@/types/sections";
 import bcrypt from "bcryptjs";
 
@@ -102,18 +112,13 @@ export default function Home() {
   }, []);
 
   async function loadPlayers() {
-    const { data, error } = await supabase
-      .from("players")
-      .select("id,name,pin_hash,submitted,submitted_at,is_admin")
-      .order("name");
-
-    if (error) {
+    try {
+      const loadedPlayers = await fetchPlayers();
+      setPlayers(loadedPlayers);
+    } catch (error) {
       console.error(error);
       setMessage("Error al cargar jugadores");
-      return;
     }
-
-    setPlayers(data || []);
   }
 
   async function refreshPlayers() {
@@ -121,108 +126,74 @@ export default function Home() {
   }
 
   async function loadAppSettings() {
-    const { data, error } = await supabase
-      .from("app_settings")
-      .select("value")
-      .eq("id", "quiniela_open")
-      .single();
-
-    if (error) {
+    try {
+      const quinielaOpen = await fetchQuinielaOpen();
+      setIsQuinielaOpen(quinielaOpen);
+    } catch (error) {
       console.error(error);
       setMessage("Error al cargar configuración de quiniela");
-      return;
     }
-
-    setIsQuinielaOpen(data.value);
   }
 
   async function loadGroups(): Promise<Group[]> {
-    const { data, error } = await supabase
-      .from("groups")
-      .select("*")
-      .order("name");
-
-    if (error) {
+    try {
+      const loadedGroups = await fetchGroups();
+      setGroups(loadedGroups);
+      return loadedGroups;
+    } catch (error) {
       console.error(error);
       setMessage("Error al cargar grupos");
       return [];
     }
-
-    const loadedGroups = (data || []).sort(
-      (a, b) => getGroupOrderIndex(a.name) - getGroupOrderIndex(b.name)
-    );
-
-    setGroups(loadedGroups);
-    return loadedGroups;
   }
 
   async function loadTeams() {
-    const { data, error } = await supabase
-      .from("teams")
-      .select("*")
-      .order("name");
-
-    if (error) {
+    try {
+      const groupedTeams = await fetchTeamsByGroup();
+      setTeamsByGroup(groupedTeams);
+    } catch (error) {
       console.error(error);
       setMessage("Error al cargar equipos");
-      return;
     }
-
-    setTeamsByGroup(groupTeamsByGroup((data || []) as Team[]));
   }
 
   async function loadGroupResults(): Promise<GroupResults> {
-    const { data, error } = await supabase.from("group_results").select("*");
-
-    if (error) {
+    try {
+      const savedResults = await fetchGroupResults();
+      setGroupResults(savedResults);
+      return savedResults;
+    } catch (error) {
       console.error(error);
       setMessage("Error al cargar resultados oficiales");
       return {};
     }
-
-    const saved = mapGroupResults(data);
-
-    setGroupResults(saved);
-    return saved;
   }
 
   async function loadSavedPredictions(playerId: string) {
-    const { data, error } = await supabase
-      .from("group_predictions")
-      .select("*")
-      .eq("player_id", playerId);
-
-    if (error) {
+    try {
+      const savedPredictions = await fetchSavedPredictions(playerId);
+      setPredictions(savedPredictions);
+    } catch (error) {
       console.error(error);
       setMessage("Error al cargar tus pronósticos");
-      return;
     }
-
-    setPredictions(mapSavedPredictions(data));
   }
 
   async function loadPlayerStatus(
     playerId: string
   ): Promise<{ submitted: boolean; is_admin: boolean } | null> {
-    const { data, error } = await supabase
-      .from("players")
-      .select("submitted,is_admin")
-      .eq("id", playerId)
-      .single();
+    try {
+      const status = await fetchPlayerStatus(playerId);
 
-    if (error) {
+      setIsSubmitted(status.submitted);
+      setIsAdmin(status.is_admin);
+      saveIsAdmin(status.is_admin);
+
+      return status;
+    } catch (error) {
       console.error(error);
       return null;
     }
-
-    setIsSubmitted(data.submitted);
-    setIsAdmin(data.is_admin);
-    saveIsAdmin(data.is_admin);
-
-    return {
-      submitted: data.submitted,
-      is_admin: data.is_admin,
-    };
   }
 
   function updatePrediction(groupId: string, position: number, teamId: string) {
@@ -354,31 +325,13 @@ export default function Home() {
   }
 
   async function loadSubmittedPredictions() {
-    const { data, error } = await supabase
-      .from("group_predictions")
-      .select(`
-        player_id,
-        group_id,
-        first_team_id,
-        second_team_id,
-        third_team_id,
-        fourth_team_id,
-        players (
-          name,
-          submitted
-        ),
-        groups (
-          name
-        )
-      `);
-
-    if (error) {
+    try {
+      const submittedRows = await fetchSubmittedPredictions();
+      setSubmittedPredictions(submittedRows);
+    } catch (error) {
       console.error(error);
       setMessage("Error al cargar pronósticos enviados");
-      return;
     }
-
-    setSubmittedPredictions(mapSubmittedPredictions(data));
   }
 
   async function createPin() {

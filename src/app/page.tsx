@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { AdminPanel } from "@/components/AdminPanel";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNavigation } from "@/components/BottomNavigation";
+import { LoginCard } from "@/components/LoginCard";
 import { MessagesArea } from "@/components/MessagesArea";
 import { MyQuinielaSection } from "@/components/MyQuinielaSection";
 import { RankingSection } from "@/components/RankingSection";
@@ -1111,100 +1112,21 @@ export default function Home() {
 
   return (
     <main className={ui.loginPage}>
-      <div className={ui.container}>
-        <h1 className={ui.loginTitle}>🏆 LVP&apos;S</h1>
-
-        <select
-          className={ui.select}
-          value={selectedPlayer}
-          onChange={(e) => {
-            setSelectedPlayer(e.target.value);
-            setPlayer(null);
-            setPin("");
-            setConfirmPin("");
-            setMessage("");
-          }}
-        >
-          <option value="">Selecciona tu nombre</option>
-
-          {players.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-
-        <button
-          className={`mt-4 ${ui.buttonPrimary}`}
-          onClick={() => {
-            const selected = players.find((p) => p.id === selectedPlayer);
-
-            if (!selected) {
-              setMessage("Selecciona un jugador");
-              return;
-            }
-
-            setPlayer(selected);
-            setPin("");
-            setConfirmPin("");
-            setMessage("");
-          }}
-        >
-          Continuar
-        </button>
-
-        {player && (
-          <div className="mt-6 rounded border p-4">
-            <p className="mb-3 font-semibold">{player.name}</p>
-
-            {player.pin_hash ? (
-              <div className="space-y-3">
-                <input
-                  type="password"
-                  placeholder="Ingresa tu PIN"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  className={ui.input}
-                />
-
-                <button
-                  onClick={login}
-                  className={ui.buttonBlue}
-                >
-                  Entrar
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <input
-                  type="password"
-                  placeholder="PIN de 4 dígitos"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  className="w-full rounded border p-3"
-                />
-
-                <input
-                  type="password"
-                  placeholder="Confirmar PIN"
-                  value={confirmPin}
-                  onChange={(e) => setConfirmPin(e.target.value)}
-                  className="w-full rounded border p-3"
-                />
-
-                <button
-                  onClick={createPin}
-                  className="w-full rounded bg-green-600 p-3 text-white"
-                >
-                  Crear PIN
-                </button>
-              </div>
-            )}
-
-            {message && <p className="mt-3 text-sm">{message}</p>}
-          </div>
-        )}
-      </div>
+      <LoginCard
+        players={players}
+        selectedPlayer={selectedPlayer}
+        player={player}
+        pin={pin}
+        confirmPin={confirmPin}
+        message={message}
+        onSelectedPlayerChange={setSelectedPlayer}
+        onPlayerChange={setPlayer}
+        onPinChange={setPin}
+        onConfirmPinChange={setConfirmPin}
+        onMessageChange={setMessage}
+        onLogin={login}
+        onCreatePin={createPin}
+      />
     </main>
   );
 }

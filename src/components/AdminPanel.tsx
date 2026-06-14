@@ -2,6 +2,7 @@
 
 import { ui } from "@/styles/ui";
 import type { Group, GroupResults, Player, Team } from "@/types/quiniela";
+import { GROUP_POSITIONS } from "@/constants/groupPositions";
 
 type AdminPanelProps = {
   players: Player[];
@@ -92,7 +93,7 @@ export function AdminPanel({
           <div key={group.id} className={ui.innerCard}>
             <h3 className="mb-2 font-semibold">{group.name}</h3>
 
-            {[1, 2, 3, 4].map((position) => (
+            {GROUP_POSITIONS.map((position) => (
               <select
                 key={position}
                 className={ui.smallSelect}

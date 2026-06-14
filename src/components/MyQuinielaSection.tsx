@@ -2,6 +2,7 @@
 
 import { ui } from "@/styles/ui";
 import type { Group, Predictions, Team } from "@/types/quiniela";
+import { GROUP_POSITIONS } from "@/constants/groupPositions";
 
 type MyQuinielaSectionProps = {
   groups: Group[];
@@ -44,7 +45,7 @@ export function MyQuinielaSection({
             </p>
           )}
 
-          {[1, 2, 3, 4].map((position) => (
+          {GROUP_POSITIONS.map((position) => (
             <select
               key={position}
               disabled={isSubmitted || !isQuinielaOpen}

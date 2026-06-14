@@ -17,6 +17,7 @@ import { getGroupOrderIndex } from "@/utils/groups";
 import { calculateGroupBreakdown } from "@/utils/scoring";
 import { hasCompleteGroupResult as checkCompleteGroupResult } from "@/utils/results";
 import { getTeamNameFromGroups } from "@/utils/teams";
+import { validatePinCreation } from "@/utils/pin";
 import { ui } from "@/styles/ui";
 import type {
   Group,
@@ -27,6 +28,12 @@ import type {
   SubmittedPredictionRow,
   Team,
 } from "@/types/quiniela";
+import {
+  clearSession,
+  getSavedSession,
+  saveIsAdmin,
+  saveSession,
+} from "@/utils/session";
 import type { SectionId } from "@/types/sections";
 import bcrypt from "bcryptjs";
 
@@ -70,18 +77,16 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("playerName");
-    const savedPlayerId = localStorage.getItem("playerId");
-    const savedIsAdmin = localStorage.getItem("isAdmin");
+    const savedSession = getSavedSession();
 
-    if (savedUser && savedPlayerId) {
-      setLoggedUser(savedUser);
-      setLoggedPlayerId(savedPlayerId);
-      setIsAdmin(savedIsAdmin === "true");
-
-      loadSavedPredictions(savedPlayerId);
-
-      loadPlayerStatus(savedPlayerId).then((status) => {
+    if (savedSession) {
+      setLoggedUser(savedSession.playerName);
+      setLoggedPlayerId(savedSession.playerId);
+      setIsAdmin(savedSession.isAdmin);
+    
+      loadSavedPredictions(savedSession.playerId);
+    
+      loadPlayerStatus(savedSession.playerId).then((status) => {
         if (status?.submitted) {
           loadSubmittedPredictions();
         }
@@ -235,7 +240,7 @@ export default function Home() {
 
     setIsSubmitted(data.submitted);
     setIsAdmin(data.is_admin);
-    localStorage.setItem("isAdmin", String(data.is_admin));
+    saveIsAdmin(data.is_admin);
 
     return {
       submitted: data.submitted,
@@ -432,16 +437,12 @@ export default function Home() {
   async function createPin() {
     if (!player) return;
 
-    if (!/^\d{4}$/.test(pin)) {
-      setMessage("El PIN debe tener exactamente 4 dígitos");
+    const pinError = validatePinCreation(pin, confirmPin);
+
+    if (pinError) {
+      setMessage(pinError);
       return;
     }
-
-    if (pin !== confirmPin) {
-      setMessage("Los PIN no coinciden");
-      return;
-    }
-
     const hash = await bcrypt.hash(pin, 10);
 
     const { error } = await supabase
@@ -481,9 +482,11 @@ export default function Home() {
       return;
     }
 
-    localStorage.setItem("playerId", player.id);
-    localStorage.setItem("playerName", player.name);
-    localStorage.setItem("isAdmin", String(player.is_admin));
+    saveSession({
+      playerId: player.id,
+      playerName: player.name,
+      isAdmin: player.is_admin,
+    });
 
     setLoggedUser(player.name);
     setLoggedPlayerId(player.id);
@@ -502,9 +505,7 @@ export default function Home() {
   }
 
   function logout() {
-    localStorage.removeItem("playerId");
-    localStorage.removeItem("playerName");
-    localStorage.removeItem("isAdmin");
+    clearSession();
 
     setLoggedUser(null);
     setLoggedPlayerId(null);

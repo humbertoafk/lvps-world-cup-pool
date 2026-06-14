@@ -1,4 +1,5 @@
 import type { PositionBreakdown } from "@/types/quiniela";
+import { GROUP_POSITIONS } from "@/constants/groupPositions";
 
 export function calculateGroupBreakdown(
   prediction: Record<number, string | null | undefined>,
@@ -6,7 +7,7 @@ export function calculateGroupBreakdown(
 ) {
   let totalPoints = 0;
 
-  const positions = [1, 2, 3, 4];
+  const positions = GROUP_POSITIONS;
 
   const breakdown: PositionBreakdown[] = positions.map((position) => {
     const predictedTeamId = prediction[position] || null;

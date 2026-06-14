@@ -731,6 +731,16 @@ export default function Home() {
 
     const nextValue = !isQuinielaOpen;
 
+    const confirmed = window.confirm(
+      nextValue
+        ? "¿Seguro que quieres abrir la quiniela otra vez?"
+        : "¿Seguro que quieres cerrar la quiniela? Nadie podrá guardar ni enviar picks."
+    );
+    
+    if (!confirmed) {
+      return;
+    }
+
     const { error } = await supabase
       .from("app_settings")
       .update({
@@ -757,6 +767,14 @@ export default function Home() {
   async function submitFinalPredictions() {
     if (!loggedPlayerId) {
       setMessage("No hay jugador iniciado");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "¿Seguro que quieres enviar tu quiniela final? Después ya no podrás modificarla."
+    );
+
+    if (!confirmed) {
       return;
     }
 

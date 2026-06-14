@@ -28,12 +28,35 @@ type Team = {
 type Predictions = Record<string, Record<number, string>>;
 type GroupResults = Record<string, Record<number, string>>;
 
+type RankingDetail = {
+  group_id: string;
+  group_name: string;
+  points: number;
+  status: "calculated" | "pending_result";
+};
+
 type RankingRow = {
   player_id: string;
   player_name: string;
   total_points: number;
   submitted: boolean;
+  details: RankingDetail[];
 };
+
+const GROUP_ORDER = [
+  "Grupo A",
+  "Grupo B",
+  "Grupo C",
+  "Grupo D",
+  "Grupo E",
+  "Grupo F",
+  "Grupo G",
+  "Grupo H",
+  "Grupo I",
+  "Grupo J",
+  "Grupo K",
+  "Grupo L",
+];
 
 export default function Home() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -58,12 +81,13 @@ export default function Home() {
 
   useEffect(() => {
     loadPlayers();
-    loadGroups();
     loadTeams();
 
-    loadGroupResults().then((loadedResults) => {
-      loadRanking(loadedResults);
-    });
+    Promise.all([loadGroups(), loadGroupResults()]).then(
+      ([loadedGroups, loadedResults]) => {
+        loadRanking(loadedResults, loadedGroups);
+      }
+    );
   }, []);
 
   useEffect(() => {
@@ -105,14 +129,19 @@ export default function Home() {
       .from("groups")
       .select("*")
       .order("name");
-
+  
     if (error) {
       console.error(error);
       setMessage("Error al cargar grupos");
-      return;
+      return [];
     }
+  
+    const loadedGroups = (data || []).sort(
+      (a, b) => GROUP_ORDER.indexOf(a.name) - GROUP_ORDER.indexOf(b.name)
+    );
 
-    setGroups(data || []);
+    setGroups(loadedGroups);
+    return loadedGroups;
   }
 
   async function loadTeams() {
@@ -258,8 +287,12 @@ export default function Home() {
     return points;
   }
 
-  async function loadRanking(resultsOverride?: GroupResults) {
+  async function loadRanking(
+    resultsOverride?: GroupResults,
+    groupsOverride?: Group[]
+  ) {
     const resultsToUse = resultsOverride || groupResults;
+    const groupsToUse = groupsOverride || groups;
 
     const { data: predictionsData, error: predictionsError } = await supabase
       .from("group_predictions")
@@ -283,16 +316,39 @@ export default function Home() {
     const pointsByPlayer: Record<string, RankingRow> = {};
 
     predictionsData?.forEach((prediction) => {
-      const result = resultsToUse[prediction.group_id];
-
-      if (!result) return;
-
       const playerData = Array.isArray(prediction.players)
         ? prediction.players[0]
         : prediction.players;
 
       if (!playerData) return;
       if (!playerData.submitted) return;
+
+      const groupName =
+        groupsToUse.find((group) => group.id === prediction.group_id)?.name ||
+        "Grupo";
+
+      if (!pointsByPlayer[prediction.player_id]) {
+        pointsByPlayer[prediction.player_id] = {
+          player_id: prediction.player_id,
+          player_name: playerData.name,
+          total_points: 0,
+          submitted: playerData.submitted,
+          details: [],
+        };
+      }
+
+      const result = resultsToUse[prediction.group_id];
+
+      if (!result || !result[1] || !result[2]) {
+        pointsByPlayer[prediction.player_id].details.push({
+          group_id: prediction.group_id,
+          group_name: groupName,
+          points: 0,
+          status: "pending_result",
+        });
+
+        return;
+      }
 
       const groupPrediction = {
         1: prediction.first_team_id,
@@ -301,22 +357,26 @@ export default function Home() {
 
       const points = calculateGroupPoints(groupPrediction, result);
 
-      if (!pointsByPlayer[prediction.player_id]) {
-        pointsByPlayer[prediction.player_id] = {
-          player_id: prediction.player_id,
-          player_name: playerData.name,
-          total_points: 0,
-          submitted: playerData.submitted,
-        };
-      }
-
       pointsByPlayer[prediction.player_id].total_points += points;
+
+      pointsByPlayer[prediction.player_id].details.push({
+        group_id: prediction.group_id,
+        group_name: groupName,
+        points,
+        status: "calculated",
+      });
     });
 
-    const rankingRows = Object.values(pointsByPlayer).sort(
-      (a, b) => b.total_points - a.total_points
-    );
-
+    const rankingRows = Object.values(pointsByPlayer)
+      .map((row) => ({
+        ...row,
+        details: row.details.sort(
+          (a, b) =>
+            GROUP_ORDER.indexOf(a.group_name) - GROUP_ORDER.indexOf(b.group_name)
+        ),
+      }))
+      .sort((a, b) => b.total_points - a.total_points);
+    
     setRanking(rankingRows);
   }
 
@@ -770,17 +830,31 @@ export default function Home() {
             ) : (
               <div className="space-y-2">
                 {ranking.map((row, index) => (
-                  <div
-                    key={row.player_id}
-                    className="flex items-center justify-between text-sm"
-                  >
-                    <span>
-                      {index + 1}. {row.player_name}
-                    </span>
+                  <div key={row.player_id} className="rounded border p-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">
+                        {index + 1}. {row.player_name}
+                      </span>
 
-                    <span className="font-semibold">
-                      {row.total_points} pts
-                    </span>
+                      <span className="font-bold">{row.total_points} pts</span>
+                    </div>
+
+                    <div className="mt-2 space-y-1 border-t pt-2 text-xs text-gray-600">
+                      {row.details.map((detail) => (
+                        <div
+                          key={detail.group_id}
+                          className="flex items-center justify-between"
+                        >
+                          <span>{detail.group_name}</span>
+                      
+                          {detail.status === "pending_result" ? (
+                            <span>Pendiente</span>
+                          ) : (
+                            <span>{detail.points} pts</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>

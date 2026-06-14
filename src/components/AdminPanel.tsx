@@ -1,28 +1,7 @@
 "use client";
 
 import { ui } from "@/styles/ui";
-
-type Player = {
-  id: string;
-  name: string;
-  submitted: boolean;
-  submitted_at: string | null;
-  is_admin: boolean;
-};
-
-type Group = {
-  id: string;
-  name: string;
-};
-
-type Team = {
-  id: string;
-  name: string;
-  group_id: string;
-  flag_emoji: string | null;
-};
-
-type GroupResults = Record<string, Record<number, string>>;
+import type { Group, GroupResults, Player, Team } from "@/types/quiniela";
 
 type AdminPanelProps = {
   players: Player[];

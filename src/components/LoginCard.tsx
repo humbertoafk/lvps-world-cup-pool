@@ -1,25 +1,17 @@
 "use client";
 
 import { ui } from "@/styles/ui";
-
-type LoginPlayer = {
-  id: string;
-  name: string;
-  pin_hash: string | null;
-  submitted: boolean;
-  submitted_at: string | null;
-  is_admin: boolean;
-};
+import type { Player } from "@/types/quiniela";
 
 type LoginCardProps = {
-  players: LoginPlayer[];
+  players: Player[];
   selectedPlayer: string;
-  player: LoginPlayer | null;
+  player: Player | null;
   pin: string;
   confirmPin: string;
   message: string;
   onSelectedPlayerChange: (playerId: string) => void;
-  onPlayerChange: (player: LoginPlayer | null) => void;
+  onPlayerChange: (player: Player | null) => void;
   onPinChange: (pin: string) => void;
   onConfirmPinChange: (pin: string) => void;
   onMessageChange: (message: string) => void;

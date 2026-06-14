@@ -1,13 +1,7 @@
 "use client";
 
 import { ui } from "@/styles/ui";
-
-type Group = {
-  id: string;
-  name: string;
-};
-
-type GroupResults = Record<string, Record<number, string>>;
+import type { Group, GroupResults } from "@/types/quiniela";
 
 type ResultsSectionProps = {
   groups: Group[];

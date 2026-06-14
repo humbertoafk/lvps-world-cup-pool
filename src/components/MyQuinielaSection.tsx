@@ -1,20 +1,7 @@
 "use client";
 
 import { ui } from "@/styles/ui";
-
-type Group = {
-  id: string;
-  name: string;
-};
-
-type Team = {
-  id: string;
-  name: string;
-  group_id: string;
-  flag_emoji: string | null;
-};
-
-type Predictions = Record<string, Record<number, string>>;
+import type { Group, Predictions, Team } from "@/types/quiniela";
 
 type MyQuinielaSectionProps = {
   groups: Group[];

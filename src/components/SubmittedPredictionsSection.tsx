@@ -1,23 +1,7 @@
 "use client";
 
 import { ui } from "@/styles/ui";
-
-type Player = {
-  id: string;
-  name: string;
-  submitted: boolean;
-};
-
-type SubmittedPredictionRow = {
-  player_id: string;
-  player_name: string;
-  group_id: string;
-  group_name: string;
-  first_team_id: string | null;
-  second_team_id: string | null;
-  third_team_id: string | null;
-  fourth_team_id: string | null;
-};
+import type { Player, SubmittedPredictionRow } from "@/types/quiniela";
 
 type SubmittedPredictionsSectionProps = {
   isSubmitted: boolean;

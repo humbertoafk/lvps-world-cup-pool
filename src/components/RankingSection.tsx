@@ -1,30 +1,7 @@
 "use client";
 
 import { ui } from "@/styles/ui";
-
-type PositionBreakdown = {
-  position: number;
-  predicted_team_id: string | null;
-  real_team_id: string | null;
-  points: number;
-  reason: "exact" | "top2_inverted" | "wrong";
-};
-
-type RankingDetail = {
-  group_id: string;
-  group_name: string;
-  points: number;
-  status: "calculated" | "pending_result";
-  positions: PositionBreakdown[];
-};
-
-type RankingRow = {
-  player_id: string;
-  player_name: string;
-  total_points: number;
-  submitted: boolean;
-  details: RankingDetail[];
-};
+import type { RankingRow } from "@/types/quiniela";
 
 type RankingSectionProps = {
   ranking: RankingRow[];

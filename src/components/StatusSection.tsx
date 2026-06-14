@@ -1,15 +1,10 @@
 "use client";
 
 import { ui } from "@/styles/ui";
-
-type StatusPlayer = {
-  id: string;
-  name: string;
-  submitted: boolean;
-};
+import type { Player } from "@/types/quiniela";
 
 type StatusSectionProps = {
-  players: StatusPlayer[];
+  players: Player[];
   onRefresh: () => void | Promise<void>;
 };
 

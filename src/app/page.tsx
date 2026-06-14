@@ -14,67 +14,18 @@ import { SubmittedPredictionsSection } from "@/components/SubmittedPredictionsSe
 import { RulesCard } from "@/components/RulesCard";
 import { StatusSection } from "@/components/StatusSection";
 import { ui } from "@/styles/ui";
+import type {
+  Group,
+  GroupResults,
+  Player,
+  PositionBreakdown,
+  Predictions,
+  RankingRow,
+  SubmittedPredictionRow,
+  Team,
+} from "@/types/quiniela";
 import type { SectionId } from "@/types/sections";
 import bcrypt from "bcryptjs";
-
-type Player = {
-  id: string;
-  name: string;
-  pin_hash: string | null;
-  submitted: boolean;
-  submitted_at: string | null;
-  is_admin: boolean;
-};
-
-type Group = {
-  id: string;
-  name: string;
-};
-
-type Team = {
-  id: string;
-  name: string;
-  group_id: string;
-  flag_emoji: string | null;
-};
-
-type Predictions = Record<string, Record<number, string>>;
-type GroupResults = Record<string, Record<number, string>>;
-
-type PositionBreakdown = {
-  position: number;
-  predicted_team_id: string | null;
-  real_team_id: string | null;
-  points: number;
-  reason: "exact" | "top2_inverted" | "wrong";
-};
-
-type RankingDetail = {
-  group_id: string;
-  group_name: string;
-  points: number;
-  status: "calculated" | "pending_result";
-  positions: PositionBreakdown[];
-};
-
-type RankingRow = {
-  player_id: string;
-  player_name: string;
-  total_points: number;
-  submitted: boolean;
-  details: RankingDetail[];
-};
-
-type SubmittedPredictionRow = {
-  player_id: string;
-  player_name: string;
-  group_id: string;
-  group_name: string;
-  first_team_id: string | null;
-  second_team_id: string | null;
-  third_team_id: string | null;
-  fourth_team_id: string | null;
-};
 
 const GROUP_ORDER = [
   "Grupo A",

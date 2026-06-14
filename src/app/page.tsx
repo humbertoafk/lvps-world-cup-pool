@@ -264,23 +264,39 @@ export default function Home() {
 
     const predictedFirst = prediction[1];
     const predictedSecond = prediction[2];
+    const predictedThird = prediction[3];
+    const predictedFourth = prediction[4];
 
     const realFirst = result[1];
     const realSecond = result[2];
+    const realThird = result[3];
+    const realFourth = result[4];
 
-    if (!predictedFirst || !predictedSecond || !realFirst || !realSecond) {
+    if (
+      !predictedFirst ||
+      !predictedSecond ||
+      !predictedThird ||
+      !predictedFourth ||
+      !realFirst ||
+      !realSecond ||
+      !realThird ||
+      !realFourth
+    ) {
       return 0;
     }
 
-    if (predictedFirst === realFirst) {
-      points += 3;
-    } else if (predictedFirst === realSecond) {
+    // Posiciones exactas: 3 puntos cada una
+    if (predictedFirst === realFirst) points += 3;
+    if (predictedSecond === realSecond) points += 3;
+    if (predictedThird === realThird) points += 3;
+    if (predictedFourth === realFourth) points += 3;
+
+    // Clasificados al Top 2 en posición invertida: 1 punto cada uno
+    if (predictedFirst !== realFirst && predictedFirst === realSecond) {
       points += 1;
     }
 
-    if (predictedSecond === realSecond) {
-      points += 3;
-    } else if (predictedSecond === realFirst) {
+    if (predictedSecond !== realSecond && predictedSecond === realFirst) {
       points += 1;
     }
 
@@ -301,6 +317,8 @@ export default function Home() {
         group_id,
         first_team_id,
         second_team_id,
+        third_team_id,
+        fourth_team_id,
         players (
           name,
           submitted
@@ -353,6 +371,8 @@ export default function Home() {
       const groupPrediction = {
         1: prediction.first_team_id,
         2: prediction.second_team_id,
+        3: prediction.third_team_id,
+        4: prediction.fourth_team_id,
       };
 
       const points = calculateGroupPoints(groupPrediction, result);

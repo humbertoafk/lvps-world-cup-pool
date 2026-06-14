@@ -26,6 +26,7 @@ type Team = {
 };
 
 type Predictions = Record<string, Record<number, string>>;
+type GroupResults = Record<string, Record<number, string>>;
 
 export default function Home() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -42,6 +43,7 @@ export default function Home() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [teamsByGroup, setTeamsByGroup] = useState<Record<string, Team[]>>({});
   const [predictions, setPredictions] = useState<Predictions>({});
+  const [groupResults, setGroupResults] = useState<GroupResults>({});
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -50,6 +52,7 @@ export default function Home() {
     loadPlayers();
     loadGroups();
     loadTeams();
+    loadGroupResults();
   }, []);
 
   useEffect(() => {
@@ -102,7 +105,10 @@ export default function Home() {
   }
 
   async function loadTeams() {
-    const { data, error } = await supabase.from("teams").select("*").order("name");
+    const { data, error } = await supabase
+      .from("teams")
+      .select("*")
+      .order("name");
 
     if (error) {
       console.error(error);
@@ -121,6 +127,29 @@ export default function Home() {
     });
 
     setTeamsByGroup(grouped);
+  }
+
+  async function loadGroupResults() {
+    const { data, error } = await supabase.from("group_results").select("*");
+
+    if (error) {
+      console.error(error);
+      setMessage("Error al cargar resultados oficiales");
+      return;
+    }
+
+    const saved: GroupResults = {};
+
+    data?.forEach((result) => {
+      saved[result.group_id] = {
+        1: result.first_team_id,
+        2: result.second_team_id,
+        3: result.third_team_id,
+        4: result.fourth_team_id,
+      };
+    });
+
+    setGroupResults(saved);
   }
 
   async function loadSavedPredictions(playerId: string) {
@@ -166,6 +195,16 @@ export default function Home() {
 
   function updatePrediction(groupId: string, position: number, teamId: string) {
     setPredictions((prev) => ({
+      ...prev,
+      [groupId]: {
+        ...prev[groupId],
+        [position]: teamId,
+      },
+    }));
+  }
+
+  function updateGroupResult(groupId: string, position: number, teamId: string) {
+    setGroupResults((prev) => ({
       ...prev,
       [groupId]: {
         ...prev[groupId],
@@ -254,6 +293,7 @@ export default function Home() {
     setConfirmPin("");
     setMessage("");
     setPredictions({});
+    setGroupResults({});
     setIsSubmitted(false);
     setIsAdmin(false);
   }
@@ -317,6 +357,60 @@ export default function Home() {
     }
 
     setMessage("Grupo guardado correctamente");
+  }
+
+  async function saveGroupResult(groupId: string) {
+    if (!isAdmin) {
+      setMessage("No tienes permisos de administrador");
+      return;
+    }
+
+    const result = groupResults[groupId];
+
+    if (!result) {
+      setMessage("Completa las 4 posiciones del resultado oficial");
+      return;
+    }
+
+    const first = result[1];
+    const second = result[2];
+    const third = result[3];
+    const fourth = result[4];
+
+    if (!first || !second || !third || !fourth) {
+      setMessage("Completa las 4 posiciones del resultado oficial");
+      return;
+    }
+
+    const selectedTeams = [first, second, third, fourth];
+    const uniqueTeams = new Set(selectedTeams);
+
+    if (uniqueTeams.size !== 4) {
+      setMessage("No puedes repetir equipos en el resultado oficial");
+      return;
+    }
+
+    const { error } = await supabase.from("group_results").upsert(
+      {
+        group_id: groupId,
+        first_team_id: first,
+        second_team_id: second,
+        third_team_id: third,
+        fourth_team_id: fourth,
+        saved_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "group_id",
+      }
+    );
+
+    if (error) {
+      console.error(error);
+      setMessage("Error al guardar resultado oficial");
+      return;
+    }
+
+    setMessage("Resultado oficial guardado correctamente");
   }
 
   async function submitFinalPredictions() {
@@ -451,10 +545,49 @@ export default function Home() {
 
           {isAdmin && (
             <div className="mb-6 rounded border border-yellow-300 bg-yellow-50 p-4">
-              <h2 className="mb-2 font-bold">Panel de administrador</h2>
-              <p className="text-sm text-gray-700">
-                Aquí capturaremos los resultados reales de cada grupo.
+              <h2 className="mb-3 font-bold">Panel de administrador</h2>
+
+              <p className="mb-4 text-sm text-gray-700">
+                Captura aquí los resultados oficiales de cada grupo.
               </p>
+
+              <div className="space-y-4">
+                {groups.map((group) => (
+                  <div key={group.id} className="rounded border bg-white p-3">
+                    <h3 className="mb-2 font-semibold">{group.name}</h3>
+
+                    {[1, 2, 3, 4].map((position) => (
+                      <select
+                        key={position}
+                        className="mb-2 w-full rounded border p-2"
+                        value={groupResults[group.id]?.[position] || ""}
+                        onChange={(e) =>
+                          updateGroupResult(
+                            group.id,
+                            position,
+                            e.target.value
+                          )
+                        }
+                      >
+                        <option value="">Resultado posición {position}</option>
+
+                        {(teamsByGroup[group.id] || []).map((team) => (
+                          <option key={team.id} value={team.id}>
+                            {team.flag_emoji} {team.name}
+                          </option>
+                        ))}
+                      </select>
+                    ))}
+
+                    <button
+                      onClick={() => saveGroupResult(group.id)}
+                      className="mt-2 w-full rounded bg-yellow-500 p-2 text-black"
+                    >
+                      Guardar resultado oficial
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

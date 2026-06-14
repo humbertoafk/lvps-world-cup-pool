@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNavigation } from "@/components/BottomNavigation";
+import { RulesCard } from "@/components/RulesCard";
 import { StatusSection } from "@/components/StatusSection";
 import { ui } from "@/styles/ui";
 import type { SectionId } from "@/types/sections";
@@ -1033,20 +1034,7 @@ export default function Home() {
             </p>
           )}
 
-          <div className={ui.card}>
-            <h2 className="mb-2 font-bold">Reglas de puntuación</h2>
-
-            <div className="space-y-1 text-sm text-neutral-300">
-              <p>+3 pts por cada posición exacta del grupo.</p>
-              <p>
-                +1 pt si aciertas un clasificado al Top 2, pero en posición
-                invertida.
-              </p>
-              <p className="font-semibold text-neutral-100">
-                Máximo por grupo: 12 pts.
-              </p>
-            </div>
-          </div>
+          <RulesCard />
 
           {isAdmin && activeSection === "admin" && (
             <div className={ui.adminCard}>

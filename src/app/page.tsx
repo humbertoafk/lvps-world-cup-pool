@@ -10,6 +10,7 @@ type Player = {
   pin_hash: string | null;
   submitted: boolean;
   submitted_at: string | null;
+  is_admin: boolean;
 };
 
 type Group = {
@@ -43,6 +44,7 @@ export default function Home() {
   const [predictions, setPredictions] = useState<Predictions>({});
 
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     loadPlayers();
@@ -53,10 +55,13 @@ export default function Home() {
   useEffect(() => {
     const savedUser = localStorage.getItem("playerName");
     const savedPlayerId = localStorage.getItem("playerId");
+    const savedIsAdmin = localStorage.getItem("isAdmin");
 
     if (savedUser && savedPlayerId) {
       setLoggedUser(savedUser);
       setLoggedPlayerId(savedPlayerId);
+      setIsAdmin(savedIsAdmin === "true");
+
       loadSavedPredictions(savedPlayerId);
       loadPlayerStatus(savedPlayerId);
     }
@@ -65,7 +70,7 @@ export default function Home() {
   async function loadPlayers() {
     const { data, error } = await supabase
       .from("players")
-      .select("id,name,pin_hash,submitted,submitted_at")
+      .select("id,name,pin_hash,submitted,submitted_at,is_admin")
       .order("name");
 
     if (error) {
@@ -78,7 +83,7 @@ export default function Home() {
   }
 
   async function refreshPlayers() {
-  await loadPlayers();
+    await loadPlayers();
   }
 
   async function loadGroups() {
@@ -97,10 +102,7 @@ export default function Home() {
   }
 
   async function loadTeams() {
-    const { data, error } = await supabase
-      .from("teams")
-      .select("*")
-      .order("name");
+    const { data, error } = await supabase.from("teams").select("*").order("name");
 
     if (error) {
       console.error(error);
@@ -226,10 +228,12 @@ export default function Home() {
 
     localStorage.setItem("playerId", player.id);
     localStorage.setItem("playerName", player.name);
+    localStorage.setItem("isAdmin", String(player.is_admin));
 
     setLoggedUser(player.name);
     setLoggedPlayerId(player.id);
     setIsSubmitted(player.submitted);
+    setIsAdmin(player.is_admin);
 
     await loadSavedPredictions(player.id);
 
@@ -240,6 +244,7 @@ export default function Home() {
   function logout() {
     localStorage.removeItem("playerId");
     localStorage.removeItem("playerName");
+    localStorage.removeItem("isAdmin");
 
     setLoggedUser(null);
     setLoggedPlayerId(null);
@@ -250,6 +255,7 @@ export default function Home() {
     setMessage("");
     setPredictions({});
     setIsSubmitted(false);
+    setIsAdmin(false);
   }
 
   async function saveGroupPrediction(groupId: string) {
@@ -443,10 +449,19 @@ export default function Home() {
             </p>
           )}
 
+          {isAdmin && (
+            <div className="mb-6 rounded border border-yellow-300 bg-yellow-50 p-4">
+              <h2 className="mb-2 font-bold">Panel de administrador</h2>
+              <p className="text-sm text-gray-700">
+                Aquí capturaremos los resultados reales de cada grupo.
+              </p>
+            </div>
+          )}
+
           <div className="mb-6 rounded border p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-bold">Estado de entregas</h2>
-                  
+
               <button
                 onClick={refreshPlayers}
                 className="rounded border px-3 py-1 text-xs"
@@ -454,7 +469,7 @@ export default function Home() {
                 Actualizar
               </button>
             </div>
-                  
+
             <div className="space-y-2">
               {players.map((p) => (
                 <div
@@ -462,15 +477,13 @@ export default function Home() {
                   className="flex items-center justify-between text-sm"
                 >
                   <span>{p.name}</span>
-              
+
                   {p.submitted ? (
                     <span className="font-semibold text-green-700">
                       ✅ Enviado
                     </span>
                   ) : (
-                    <span className="text-gray-500">
-                      ⏳ Pendiente
-                    </span>
+                    <span className="text-gray-500">⏳ Pendiente</span>
                   )}
                 </div>
               ))}

@@ -34,13 +34,24 @@ export function LoginCard({
   onLogin,
   onCreatePin,
 }: LoginCardProps) {
-    function handlePinChange(value: string) {
-      onPinChange(value.replace(/\D/g, "").slice(0, 4));
-    }
-    
-    function handleConfirmPinChange(value: string) {
-      onConfirmPinChange(value.replace(/\D/g, "").slice(0, 4));
-    }
+  function handlePlayerSelect(playerId: string) {
+    const selected = players.find((item) => item.id === playerId) || null;
+
+    onSelectedPlayerChange(playerId);
+    onPlayerChange(selected);
+    onPinChange("");
+    onConfirmPinChange("");
+    onMessageChange("");
+  }
+
+  function handlePinChange(value: string) {
+    onPinChange(value.replace(/\D/g, "").slice(0, 4));
+  }
+
+  function handleConfirmPinChange(value: string) {
+    onConfirmPinChange(value.replace(/\D/g, "").slice(0, 4));
+  }
+
   return (
     <div className={ui.container}>
       <h1 className={ui.loginTitle}>🏆 LVP&apos;S</h1>
@@ -48,13 +59,7 @@ export function LoginCard({
       <select
         className={ui.select}
         value={selectedPlayer}
-        onChange={(event) => {
-          onSelectedPlayerChange(event.target.value);
-          onPlayerChange(null);
-          onPinChange("");
-          onConfirmPinChange("");
-          onMessageChange("");
-        }}
+        onChange={(event) => handlePlayerSelect(event.target.value)}
       >
         <option value="">Selecciona tu nombre</option>
 
@@ -64,25 +69,6 @@ export function LoginCard({
           </option>
         ))}
       </select>
-
-      <button
-        className={`mt-4 ${ui.buttonPrimary}`}
-        onClick={() => {
-          const selected = players.find((item) => item.id === selectedPlayer);
-
-          if (!selected) {
-            onMessageChange("Selecciona un jugador");
-            return;
-          }
-
-          onPlayerChange(selected);
-          onPinChange("");
-          onConfirmPinChange("");
-          onMessageChange("");
-        }}
-      >
-        Continuar
-      </button>
 
       {player && (
         <div className={`mt-6 ${ui.cardPlain}`}>
@@ -110,7 +96,7 @@ export function LoginCard({
                 type="password"
                 inputMode="numeric"
                 maxLength={4}
-                placeholder="PIN de 4 dígitos"
+                placeholder="Crea un PIN de 4 dígitos"
                 value={pin}
                 onChange={(event) => handlePinChange(event.target.value)}
                 className={ui.input}
@@ -120,9 +106,11 @@ export function LoginCard({
                 type="password"
                 inputMode="numeric"
                 maxLength={4}
-                placeholder="Confirmar PIN"
+                placeholder="Confirma tu PIN"
                 value={confirmPin}
-                onChange={(event) => handleConfirmPinChange(event.target.value)}
+                onChange={(event) =>
+                  handleConfirmPinChange(event.target.value)
+                }
                 className={ui.input}
               />
 

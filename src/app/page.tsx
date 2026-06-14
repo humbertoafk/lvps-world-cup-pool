@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { AppHeader } from "@/components/AppHeader";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { ui } from "@/styles/ui";
 import type { SectionId } from "@/types/sections";
@@ -1015,19 +1016,7 @@ export default function Home() {
     return (
       <main className={ui.page}>
         <div className={ui.container}>
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h1 className={ui.title}>🏆 LVP&apos;S</h1>
-              <p className={ui.subtitle}>Bienvenido {loggedUser}</p>
-            </div>
-
-            <button
-              onClick={logout}
-              className={ui.buttonLogout}
-            >
-              Salir
-            </button>
-          </div>
+          <AppHeader loggedUser={loggedUser} onLogout={logout} />
 
           {message && <p className={ui.message}>{message}</p>}
 

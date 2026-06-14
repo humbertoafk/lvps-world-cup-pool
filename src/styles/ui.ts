@@ -4,6 +4,7 @@ export const ui = {
     "flex min-h-screen items-center justify-center bg-neutral-950 text-neutral-100",
 
   container: "mx-auto w-full max-w-md p-6",
+  appHeader: "mb-6 flex items-center justify-between",
 
   title: "text-2xl font-bold",
   loginTitle: "mb-6 text-3xl font-bold",

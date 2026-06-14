@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { sectionButtonClass, ui } from "@/styles/ui";
 import bcrypt from "bcryptjs";
 
 type Player = {
@@ -344,11 +345,7 @@ export default function Home() {
   }
 
   function getSectionButtonClass(sectionId: SectionId) {
-    return `rounded px-2 py-2 text-[11px] font-semibold ${
-      activeSection === sectionId
-        ? "bg-black text-white"
-        : "bg-white text-gray-700"
-    }`;
+    return sectionButtonClass(activeSection === sectionId);
   }
 
   function calculateGroupBreakdown(
@@ -1026,12 +1023,12 @@ export default function Home() {
 
   if (loggedUser) {
     return (
-      <main className="min-h-screen bg-white pb-32">
-        <div className="mx-auto w-full max-w-md p-6">
+      <main className={ui.page}>
+        <div className={ui.container}>
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">🏆 LVP&apos;S</h1>
-              <p className="text-sm text-gray-600">Bienvenido {loggedUser}</p>
+              <h1 className={ui.title}>🏆 LVP&apos;S</h1>
+              <p className={ui.subtitle}>Bienvenido {loggedUser}</p>
             </div>
 
             <button
@@ -1042,32 +1039,30 @@ export default function Home() {
             </button>
           </div>
 
-          {message && (
-            <p className="mb-4 rounded border p-3 text-sm">{message}</p>
-          )}
+          {message && <p className={ui.message}>{message}</p>}
 
-          {isSubmitted && (
-            <p className="mb-4 rounded border border-green-300 bg-green-50 p-3 text-sm font-semibold text-green-700">
+          {isSubmitted && (<p className={ui.successMessage}>
+            
               Quiniela enviada. Tus picks están bloqueados.
             </p>
           )}
 
           {!isQuinielaOpen && (
-            <p className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-700">
+            <p className={ui.dangerMessage}>
               La quiniela está cerrada. Ya no se pueden guardar ni enviar picks.
             </p>
           )}
 
-          <div className="mb-6 rounded border bg-gray-50 p-4">
+          <div className={ui.card}>
             <h2 className="mb-2 font-bold">Reglas de puntuación</h2>
 
-            <div className="space-y-1 text-sm text-gray-700">
+            <div className="space-y-1 text-sm text-neutral-300">
               <p>+3 pts por cada posición exacta del grupo.</p>
               <p>
                 +1 pt si aciertas un clasificado al Top 2, pero en posición
                 invertida.
               </p>
-              <p className="font-semibold text-gray-900">
+              <p className="font-semibold text-neutral-100">
                 Máximo por grupo: 12 pts.
               </p>
             </div>
@@ -1519,8 +1514,8 @@ export default function Home() {
           )}
         </div>
 
-        <nav className="fixed bottom-0 left-0 right-0 border-t bg-white p-2">
-          <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
+        <nav className={ui.bottomNav}>
+          <div className={ui.bottomNavGrid}>
             <button
               onClick={() => setActiveSection("resumen")}
               className={getSectionButtonClass("resumen")}
@@ -1571,12 +1566,12 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-white">
-      <div className="w-full max-w-md p-6">
-        <h1 className="mb-6 text-3xl font-bold">🏆 LVP&apos;S</h1>
+    <main className={ui.loginPage}>
+      <div className={ui.container}>
+        <h1 className={ui.loginTitle}>🏆 LVP&apos;S</h1>
 
         <select
-          className="w-full rounded border p-3"
+          className={ui.select}
           value={selectedPlayer}
           onChange={(e) => {
             setSelectedPlayer(e.target.value);
@@ -1596,7 +1591,7 @@ export default function Home() {
         </select>
 
         <button
-          className="mt-4 w-full rounded bg-black p-3 text-white"
+          className={`mt-4 ${ui.buttonPrimary}`}
           onClick={() => {
             const selected = players.find((p) => p.id === selectedPlayer);
 
@@ -1625,12 +1620,12 @@ export default function Home() {
                   placeholder="Ingresa tu PIN"
                   value={pin}
                   onChange={(e) => setPin(e.target.value)}
-                  className="w-full rounded border p-3"
+                  className={ui.input}
                 />
 
                 <button
                   onClick={login}
-                  className="w-full rounded bg-blue-600 p-3 text-white"
+                  className={ui.buttonBlue}
                 >
                   Entrar
                 </button>

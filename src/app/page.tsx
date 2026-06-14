@@ -92,10 +92,12 @@ export default function Home() {
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isQuinielaOpen, setIsQuinielaOpen] = useState(true);
 
   useEffect(() => {
     loadPlayers();
     loadTeams();
+    loadAppSettings();
 
     Promise.all([loadGroups(), loadGroupResults()]).then(
       ([loadedGroups, loadedResults]) => {
@@ -137,6 +139,22 @@ export default function Home() {
 
   async function refreshPlayers() {
     await loadPlayers();
+  }
+
+  async function loadAppSettings() {
+    const { data, error } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("id", "quiniela_open")
+      .single();
+
+    if (error) {
+      console.error(error);
+      setMessage("Error al cargar configuración de quiniela");
+      return;
+    }
+
+    setIsQuinielaOpen(data.value);
   }
 
   async function loadGroups() {
@@ -578,6 +596,11 @@ export default function Home() {
       return;
     }
 
+    if (!isQuinielaOpen) {
+      setMessage("La quiniela ya está cerrada");
+      return;
+    }
+
     if (isSubmitted) {
       setMessage("Tu quiniela ya fue enviada y está bloqueada");
       return;
@@ -700,9 +723,45 @@ export default function Home() {
     setMessage("Resultado oficial guardado correctamente");
   }
 
+  async function toggleQuinielaOpen() {
+    if (!isAdmin) {
+      setMessage("No tienes permisos de administrador");
+      return;
+    }
+
+    const nextValue = !isQuinielaOpen;
+
+    const { error } = await supabase
+      .from("app_settings")
+      .update({
+        value: nextValue,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", "quiniela_open");
+
+    if (error) {
+      console.error(error);
+      setMessage("Error al actualizar estado de quiniela");
+      return;
+    }
+
+    setIsQuinielaOpen(nextValue);
+
+    setMessage(
+      nextValue
+        ? "Quiniela abierta correctamente"
+        : "Quiniela cerrada correctamente"
+    );
+  }
+
   async function submitFinalPredictions() {
     if (!loggedPlayerId) {
       setMessage("No hay jugador iniciado");
+      return;
+    }
+
+    if (!isQuinielaOpen) {
+      setMessage("La quiniela ya está cerrada");
       return;
     }
 
@@ -833,6 +892,12 @@ export default function Home() {
             </p>
           )}
 
+          {!isQuinielaOpen && (
+            <p className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-700">
+              La quiniela está cerrada. Ya no se pueden guardar ni enviar picks.
+            </p>
+          )}
+
           <div className="mb-6 rounded border bg-gray-50 p-4">
             <h2 className="mb-2 font-bold">Reglas de puntuación</h2>
 
@@ -854,6 +919,17 @@ export default function Home() {
               <p className="mb-4 text-sm text-gray-700">
                 Captura aquí los resultados oficiales de cada grupo.
               </p>
+
+              <button
+                onClick={toggleQuinielaOpen}
+                className={`mb-4 w-full rounded p-2 text-sm font-semibold ${
+                  isQuinielaOpen
+                    ? "bg-red-600 text-white"
+                    : "bg-green-600 text-white"
+                }`}
+              >
+                {isQuinielaOpen ? "Cerrar quiniela" : "Abrir quiniela"}
+              </button>
 
               <button
                 onClick={() => loadRanking()}
@@ -987,7 +1063,7 @@ export default function Home() {
           <div className="mb-6 rounded border p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-bold">Pronósticos enviados</h2>
-                    
+
               <button
                 onClick={loadSubmittedPredictions}
                 className="rounded border px-3 py-1 text-xs"
@@ -995,7 +1071,7 @@ export default function Home() {
                 Actualizar
               </button>
             </div>
-                    
+
             {!isSubmitted ? (
               <p className="text-sm text-gray-500">
                 Envía tu quiniela final para poder ver los pronósticos enviados.
@@ -1056,7 +1132,7 @@ export default function Home() {
                 {[1, 2, 3, 4].map((position) => (
                   <select
                     key={position}
-                    disabled={isSubmitted}
+                    disabled={isSubmitted || !isQuinielaOpen}
                     className="mb-2 w-full rounded border p-2 disabled:bg-gray-100"
                     value={predictions[group.id]?.[position] || ""}
                     onChange={(e) =>
@@ -1074,7 +1150,7 @@ export default function Home() {
                 ))}
 
                 <button
-                  disabled={isSubmitted}
+                  disabled={isSubmitted || !isQuinielaOpen}
                   onClick={() => saveGroupPrediction(group.id)}
                   className="mt-2 w-full rounded bg-green-600 p-2 text-white disabled:bg-gray-400"
                 >
@@ -1090,8 +1166,9 @@ export default function Home() {
                 </p>
               ) : (
                 <button
+                  disabled={!isQuinielaOpen}
                   onClick={submitFinalPredictions}
-                  className="w-full rounded bg-black p-3 text-white"
+                  className="w-full rounded bg-black p-3 text-white disabled:bg-gray-400"
                 >
                   Enviar quiniela final
                 </button>

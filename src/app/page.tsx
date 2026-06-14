@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { AdminPanel } from "@/components/AdminPanel";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNavigation } from "@/components/BottomNavigation";
@@ -13,12 +12,11 @@ import { ResultsSection } from "@/components/ResultsSection";
 import { SubmittedPredictionsSection } from "@/components/SubmittedPredictionsSection";
 import { RulesCard } from "@/components/RulesCard";
 import { StatusSection } from "@/components/StatusSection";
-import { getGroupOrderIndex } from "@/utils/groups";
-import { calculateGroupBreakdown } from "@/utils/scoring";
 import { hasCompleteGroupResult as checkCompleteGroupResult } from "@/utils/results";
 import { getTeamNameFromGroups } from "@/utils/teams";
 import { validatePinCreation } from "@/utils/pin";
 import { validateGroupSelection } from "@/utils/groupValidation";
+import { fetchRankingRows } from "@/services/rankingService";
 import { ui } from "@/styles/ui";
 import type {
   Group,
@@ -232,98 +230,14 @@ export default function Home() {
   ) {
     const resultsToUse = resultsOverride || groupResults;
     const groupsToUse = groupsOverride || groups;
-
-    const { data: predictionsData, error: predictionsError } = await supabase
-      .from("group_predictions")
-      .select(`
-        player_id,
-        group_id,
-        first_team_id,
-        second_team_id,
-        third_team_id,
-        fourth_team_id,
-        players (
-          name,
-          submitted
-        )
-      `);
-
-    if (predictionsError) {
-      console.error(predictionsError);
+  
+    try {
+      const rankingRows = await fetchRankingRows(resultsToUse, groupsToUse);
+      setRanking(rankingRows);
+    } catch (error) {
+      console.error(error);
       setMessage("Error al cargar ranking");
-      return;
     }
-
-    const pointsByPlayer: Record<string, RankingRow> = {};
-
-    predictionsData?.forEach((prediction) => {
-      const playerData = Array.isArray(prediction.players)
-        ? prediction.players[0]
-        : prediction.players;
-
-      if (!playerData) return;
-      if (!playerData.submitted) return;
-
-      const groupName =
-        groupsToUse.find((group) => group.id === prediction.group_id)?.name ||
-        "Grupo";
-
-      if (!pointsByPlayer[prediction.player_id]) {
-        pointsByPlayer[prediction.player_id] = {
-          player_id: prediction.player_id,
-          player_name: playerData.name,
-          total_points: 0,
-          submitted: playerData.submitted,
-          details: [],
-        };
-      }
-
-      const result = resultsToUse[prediction.group_id];
-
-      if (!result || !result[1] || !result[2] || !result[3] || !result[4]) {
-        pointsByPlayer[prediction.player_id].details.push({
-          group_id: prediction.group_id,
-          group_name: groupName,
-          points: 0,
-          status: "pending_result",
-          positions: [],
-        });
-
-        return;
-      }
-
-      const groupPrediction = {
-        1: prediction.first_team_id,
-        2: prediction.second_team_id,
-        3: prediction.third_team_id,
-        4: prediction.fourth_team_id,
-      };
-
-      const calculated = calculateGroupBreakdown(groupPrediction, result);
-
-      pointsByPlayer[prediction.player_id].total_points +=
-        calculated.totalPoints;
-
-      pointsByPlayer[prediction.player_id].details.push({
-        group_id: prediction.group_id,
-        group_name: groupName,
-        points: calculated.totalPoints,
-        status: "calculated",
-        positions: calculated.breakdown,
-      });
-    });
-
-    const rankingRows = Object.values(pointsByPlayer)
-      .map((row) => ({
-        ...row,
-        details: row.details.sort(
-          (a, b) =>
-            getGroupOrderIndex(a.group_name) - getGroupOrderIndex(b.group_name)
-        ),
-      }))
-      .sort((a, b) => b.total_points - a.total_points);
-
-    setRanking(rankingRows);
   }
 
   async function loadSubmittedPredictions() {

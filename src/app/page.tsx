@@ -28,11 +28,20 @@ type Team = {
 type Predictions = Record<string, Record<number, string>>;
 type GroupResults = Record<string, Record<number, string>>;
 
+type PositionBreakdown = {
+  position: number;
+  predicted_team_id: string | null;
+  real_team_id: string | null;
+  points: number;
+  reason: "exact" | "top2_inverted" | "wrong";
+};
+
 type RankingDetail = {
   group_id: string;
   group_name: string;
   points: number;
   status: "calculated" | "pending_result";
+  positions: PositionBreakdown[];
 };
 
 type RankingRow = {
@@ -69,6 +78,11 @@ const GROUP_ORDER = [
   "Grupo L",
 ];
 
+function getGroupOrderIndex(groupName: string) {
+  const index = GROUP_ORDER.indexOf(groupName);
+  return index === -1 ? 999 : index;
+}
+
 export default function Home() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState("");
@@ -87,7 +101,7 @@ export default function Home() {
   const [groupResults, setGroupResults] = useState<GroupResults>({});
   const [ranking, setRanking] = useState<RankingRow[]>([]);
   const [submittedPredictions, setSubmittedPredictions] = useState<
-  SubmittedPredictionRow[]
+    SubmittedPredictionRow[]
   >([]);
 
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -117,9 +131,13 @@ export default function Home() {
       setLoggedPlayerId(savedPlayerId);
       setIsAdmin(savedIsAdmin === "true");
 
-    loadSavedPredictions(savedPlayerId);
-    loadPlayerStatus(savedPlayerId);
-    loadSubmittedPredictions();
+      loadSavedPredictions(savedPlayerId);
+
+      loadPlayerStatus(savedPlayerId).then((status) => {
+        if (status?.submitted) {
+          loadSubmittedPredictions();
+        }
+      });
     }
   }, []);
 
@@ -158,20 +176,20 @@ export default function Home() {
     setIsQuinielaOpen(data.value);
   }
 
-  async function loadGroups() {
+  async function loadGroups(): Promise<Group[]> {
     const { data, error } = await supabase
       .from("groups")
       .select("*")
       .order("name");
-  
+
     if (error) {
       console.error(error);
       setMessage("Error al cargar grupos");
       return [];
     }
-  
+
     const loadedGroups = (data || []).sort(
-      (a, b) => GROUP_ORDER.indexOf(a.name) - GROUP_ORDER.indexOf(b.name)
+      (a, b) => getGroupOrderIndex(a.name) - getGroupOrderIndex(b.name)
     );
 
     setGroups(loadedGroups);
@@ -203,7 +221,7 @@ export default function Home() {
     setTeamsByGroup(grouped);
   }
 
-  async function loadGroupResults() {
+  async function loadGroupResults(): Promise<GroupResults> {
     const { data, error } = await supabase.from("group_results").select("*");
 
     if (error) {
@@ -253,7 +271,9 @@ export default function Home() {
     setPredictions(saved);
   }
 
-  async function loadPlayerStatus(playerId: string) {
+  async function loadPlayerStatus(
+    playerId: string
+  ): Promise<{ submitted: boolean; is_admin: boolean } | null> {
     const { data, error } = await supabase
       .from("players")
       .select("submitted,is_admin")
@@ -262,12 +282,17 @@ export default function Home() {
 
     if (error) {
       console.error(error);
-      return;
+      return null;
     }
 
     setIsSubmitted(data.submitted);
     setIsAdmin(data.is_admin);
     localStorage.setItem("isAdmin", String(data.is_admin));
+
+    return {
+      submitted: data.submitted,
+      is_admin: data.is_admin,
+    };
   }
 
   function updatePrediction(groupId: string, position: number, teamId: string) {
@@ -290,7 +315,7 @@ export default function Home() {
     }));
   }
 
-  function getTeamName(teamId: string | null) {
+  function getTeamName(teamId: string | null | undefined) {
     if (!teamId) return "-";
 
     const allTeams = Object.values(teamsByGroup).flat();
@@ -309,51 +334,55 @@ export default function Home() {
     return Boolean(result[1] && result[2] && result[3] && result[4]);
   }
 
-  function calculateGroupPoints(
+  function calculateGroupBreakdown(
     prediction: Record<number, string | null | undefined>,
     result: Record<number, string | null | undefined>
   ) {
-    let points = 0;
+    let totalPoints = 0;
 
-    const predictedFirst = prediction[1];
-    const predictedSecond = prediction[2];
-    const predictedThird = prediction[3];
-    const predictedFourth = prediction[4];
+    const positions = [1, 2, 3, 4];
 
-    const realFirst = result[1];
-    const realSecond = result[2];
-    const realThird = result[3];
-    const realFourth = result[4];
+    const breakdown: PositionBreakdown[] = positions.map((position) => {
+      const predictedTeamId = prediction[position] || null;
+      const realTeamId = result[position] || null;
 
-    if (
-      !predictedFirst ||
-      !predictedSecond ||
-      !predictedThird ||
-      !predictedFourth ||
-      !realFirst ||
-      !realSecond ||
-      !realThird ||
-      !realFourth
-    ) {
-      return 0;
-    }
+      let points = 0;
+      let reason: PositionBreakdown["reason"] = "wrong";
 
-    // Posiciones exactas: 3 puntos cada una
-    if (predictedFirst === realFirst) points += 3;
-    if (predictedSecond === realSecond) points += 3;
-    if (predictedThird === realThird) points += 3;
-    if (predictedFourth === realFourth) points += 3;
+      if (predictedTeamId && realTeamId && predictedTeamId === realTeamId) {
+        points = 3;
+        reason = "exact";
+      } else if (
+        position === 1 &&
+        predictedTeamId &&
+        predictedTeamId === result[2]
+      ) {
+        points = 1;
+        reason = "top2_inverted";
+      } else if (
+        position === 2 &&
+        predictedTeamId &&
+        predictedTeamId === result[1]
+      ) {
+        points = 1;
+        reason = "top2_inverted";
+      }
 
-    // Clasificados al Top 2 en posición invertida: 1 punto cada uno
-    if (predictedFirst !== realFirst && predictedFirst === realSecond) {
-      points += 1;
-    }
+      totalPoints += points;
 
-    if (predictedSecond !== realSecond && predictedSecond === realFirst) {
-      points += 1;
-    }
+      return {
+        position,
+        predicted_team_id: predictedTeamId,
+        real_team_id: realTeamId,
+        points,
+        reason,
+      };
+    });
 
-    return points;
+    return {
+      totalPoints,
+      breakdown,
+    };
   }
 
   async function loadRanking(
@@ -410,12 +439,13 @@ export default function Home() {
 
       const result = resultsToUse[prediction.group_id];
 
-      if (!result || !result[1] || !result[2]) {
+      if (!result || !result[1] || !result[2] || !result[3] || !result[4]) {
         pointsByPlayer[prediction.player_id].details.push({
           group_id: prediction.group_id,
           group_name: groupName,
           points: 0,
           status: "pending_result",
+          positions: [],
         });
 
         return;
@@ -428,15 +458,17 @@ export default function Home() {
         4: prediction.fourth_team_id,
       };
 
-      const points = calculateGroupPoints(groupPrediction, result);
+      const calculated = calculateGroupBreakdown(groupPrediction, result);
 
-      pointsByPlayer[prediction.player_id].total_points += points;
+      pointsByPlayer[prediction.player_id].total_points +=
+        calculated.totalPoints;
 
       pointsByPlayer[prediction.player_id].details.push({
         group_id: prediction.group_id,
         group_name: groupName,
-        points,
+        points: calculated.totalPoints,
         status: "calculated",
+        positions: calculated.breakdown,
       });
     });
 
@@ -445,11 +477,11 @@ export default function Home() {
         ...row,
         details: row.details.sort(
           (a, b) =>
-            GROUP_ORDER.indexOf(a.group_name) - GROUP_ORDER.indexOf(b.group_name)
+            getGroupOrderIndex(a.group_name) - getGroupOrderIndex(b.group_name)
         ),
       }))
       .sort((a, b) => b.total_points - a.total_points);
-    
+
     setRanking(rankingRows);
   }
 
@@ -505,7 +537,7 @@ export default function Home() {
     });
 
     const orderedRows = rows.sort(
-      (a, b) => GROUP_ORDER.indexOf(a.group_name) - GROUP_ORDER.indexOf(b.group_name)
+      (a, b) => getGroupOrderIndex(a.group_name) - getGroupOrderIndex(b.group_name)
     );
 
     setSubmittedPredictions(orderedRows);
@@ -595,6 +627,7 @@ export default function Home() {
     setConfirmPin("");
     setMessage("");
     setPredictions({});
+    setSubmittedPredictions([]);
     setIsSubmitted(false);
     setIsAdmin(false);
   }
@@ -727,7 +760,7 @@ export default function Home() {
     }
 
     setGroupResults(updatedResults);
-    await loadRanking(updatedResults);
+    await loadRanking(updatedResults, groups);
 
     setMessage("Resultado oficial guardado correctamente");
   }
@@ -843,7 +876,7 @@ export default function Home() {
     }
 
     await loadSubmittedPredictions();
-    await loadRanking(groupResults);
+    await loadRanking(groupResults, groups);
 
     setMessage(
       `Quiniela de ${
@@ -860,14 +893,6 @@ export default function Home() {
       return;
     }
 
-    const confirmed = window.confirm(
-      "¿Seguro que quieres enviar tu quiniela final? Después ya no podrás modificarla."
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
     if (!isQuinielaOpen) {
       setMessage("La quiniela ya está cerrada");
       return;
@@ -880,6 +905,14 @@ export default function Home() {
 
     if (groups.length === 0) {
       setMessage("No hay grupos cargados");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "¿Seguro que quieres enviar tu quiniela final? Después ya no podrás modificarla."
+    );
+
+    if (!confirmed) {
       return;
     }
 
@@ -966,7 +999,7 @@ export default function Home() {
       )
     );
 
-    await loadRanking(groupResults);
+    await loadRanking(groupResults, groups);
     await loadSubmittedPredictions();
 
     setMessage("Quiniela enviada correctamente. Ya no puedes modificarla.");
@@ -1012,7 +1045,8 @@ export default function Home() {
             <div className="space-y-1 text-sm text-gray-700">
               <p>+3 pts por cada posición exacta del grupo.</p>
               <p>
-                +1 pt si aciertas un clasificado al Top 2, pero en posición invertida.
+                +1 pt si aciertas un clasificado al Top 2, pero en posición
+                invertida.
               </p>
               <p className="font-semibold text-gray-900">
                 Máximo por grupo: 12 pts.
@@ -1043,7 +1077,8 @@ export default function Home() {
                 <h3 className="mb-2 font-semibold">Desbloquear jugador</h3>
 
                 <p className="mb-3 text-xs text-gray-600">
-                  Esto conserva sus picks, pero permite que el jugador vuelva a editarlos.
+                  Esto conserva sus picks, pero permite que el jugador vuelva a
+                  editarlos.
                 </p>
 
                 <select
@@ -1059,7 +1094,7 @@ export default function Home() {
                     </option>
                   ))}
                 </select>
-                
+
                 <button
                   onClick={unlockPlayerSubmission}
                   className="w-full rounded bg-orange-500 p-2 text-sm font-semibold text-white"
@@ -1177,16 +1212,66 @@ export default function Home() {
 
                     <div className="mt-2 space-y-1 border-t pt-2 text-xs text-gray-600">
                       {row.details.map((detail) => (
-                        <div
-                          key={detail.group_id}
-                          className="flex items-center justify-between"
-                        >
-                          <span>{detail.group_name}</span>
-                      
-                          {detail.status === "pending_result" ? (
-                            <span>Pendiente</span>
-                          ) : (
-                            <span>{detail.points} pts</span>
+                        <div key={detail.group_id} className="rounded border p-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">
+                              {detail.group_name}
+                            </span>
+
+                            {detail.status === "pending_result" ? (
+                              <span className="text-gray-500">Pendiente</span>
+                            ) : (
+                              <span className="font-semibold">
+                                {detail.points} pts
+                              </span>
+                            )}
+                          </div>
+
+                          {detail.status === "calculated" && (
+                            <div className="mt-2 space-y-1 text-xs text-gray-600">
+                              {detail.positions.map((positionDetail) => (
+                                <div
+                                  key={positionDetail.position}
+                                  className="flex items-start justify-between gap-3"
+                                >
+                                  <div>
+                                    <p>
+                                      {positionDetail.position}. Pick:{" "}
+                                      {getTeamName(
+                                        positionDetail.predicted_team_id
+                                      )}
+                                    </p>
+                                    <p className="text-gray-400">
+                                      Real:{" "}
+                                      {getTeamName(positionDetail.real_team_id)}
+                                    </p>
+                                  </div>
+
+                                  <div className="text-right">
+                                    <p className="font-semibold">
+                                      +{positionDetail.points}
+                                    </p>
+
+                                    {positionDetail.reason === "exact" && (
+                                      <p className="text-green-700">Exacto</p>
+                                    )}
+
+                                    {positionDetail.reason ===
+                                      "top2_inverted" && (
+                                      <p className="text-yellow-700">
+                                        Clasificado
+                                      </p>
+                                    )}
+
+                                    {positionDetail.reason === "wrong" && (
+                                      <p className="text-gray-400">
+                                        Sin puntos
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
                       ))}
@@ -1195,6 +1280,57 @@ export default function Home() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="mb-6 rounded border p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-bold">Resultados oficiales</h2>
+
+              <button
+                onClick={async () => {
+                  const loadedResults = await loadGroupResults();
+                  await loadRanking(loadedResults, groups);
+                }}
+                className="rounded border px-3 py-1 text-xs"
+              >
+                Actualizar
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {groups.map((group) => {
+                const result = groupResults[group.id];
+
+                return (
+                  <div key={group.id} className="rounded border p-3 text-sm">
+                    <div className="mb-2 flex items-center justify-between">
+                      <h3 className="font-semibold">{group.name}</h3>
+
+                      {hasCompleteGroupResult(group.id) ? (
+                        <span className="text-xs font-semibold text-green-700">
+                          Capturado
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-500">Pendiente</span>
+                      )}
+                    </div>
+
+                    {hasCompleteGroupResult(group.id) && result ? (
+                      <div className="space-y-1 text-xs text-gray-600">
+                        <p>1. {getTeamName(result[1])}</p>
+                        <p>2. {getTeamName(result[2])}</p>
+                        <p>3. {getTeamName(result[3])}</p>
+                        <p>4. {getTeamName(result[4])}</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500">
+                        Resultado oficial todavía no capturado.
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           <div className="mb-6 rounded border p-4">
@@ -1225,21 +1361,33 @@ export default function Home() {
                     const playerPredictions = submittedPredictions.filter(
                       (prediction) => prediction.player_id === submittedPlayer.id
                     );
-                  
+
                     return (
                       <div key={submittedPlayer.id} className="rounded border p-3">
-                        <h3 className="mb-2 font-semibold">{submittedPlayer.name}</h3>
-                    
+                        <h3 className="mb-2 font-semibold">
+                          {submittedPlayer.name}
+                        </h3>
+
                         <div className="space-y-3">
                           {playerPredictions.map((prediction) => (
                             <div key={prediction.group_id} className="text-sm">
-                              <p className="font-medium">{prediction.group_name}</p>
-                          
+                              <p className="font-medium">
+                                {prediction.group_name}
+                              </p>
+
                               <div className="mt-1 space-y-1 text-xs text-gray-600">
-                                <p>1. {getTeamName(prediction.first_team_id)}</p>
-                                <p>2. {getTeamName(prediction.second_team_id)}</p>
-                                <p>3. {getTeamName(prediction.third_team_id)}</p>
-                                <p>4. {getTeamName(prediction.fourth_team_id)}</p>
+                                <p>
+                                  1. {getTeamName(prediction.first_team_id)}
+                                </p>
+                                <p>
+                                  2. {getTeamName(prediction.second_team_id)}
+                                </p>
+                                <p>
+                                  3. {getTeamName(prediction.third_team_id)}
+                                </p>
+                                <p>
+                                  4. {getTeamName(prediction.fourth_team_id)}
+                                </p>
                               </div>
                             </div>
                           ))}
@@ -1249,57 +1397,6 @@ export default function Home() {
                   })}
               </div>
             )}
-          </div>
-
-          <div className="mb-6 rounded border p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-bold">Resultados oficiales</h2>
-                    
-              <button
-                onClick={async () => {
-                  const loadedResults = await loadGroupResults();
-                  await loadRanking(loadedResults, groups);
-                }}
-                className="rounded border px-3 py-1 text-xs"
-              >
-                Actualizar
-              </button>
-            </div>
-              
-            <div className="space-y-4">
-              {groups.map((group) => {
-                const result = groupResults[group.id];
-              
-                return (
-                  <div key={group.id} className="rounded border p-3 text-sm">
-                    <div className="mb-2 flex items-center justify-between">
-                      <h3 className="font-semibold">{group.name}</h3>
-                
-                      {hasCompleteGroupResult(group.id) ? (
-                        <span className="text-xs font-semibold text-green-700">
-                          Capturado
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-500">Pendiente</span>
-                      )}
-                    </div>
-                    
-                    {hasCompleteGroupResult(group.id) && result ? (
-                      <div className="space-y-1 text-xs text-gray-600">
-                        <p>1. {getTeamName(result[1])}</p>
-                        <p>2. {getTeamName(result[2])}</p>
-                        <p>3. {getTeamName(result[3])}</p>
-                        <p>4. {getTeamName(result[4])}</p>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-500">
-                        Resultado oficial todavía no capturado.
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
           </div>
 
           {groups.length === 0 && (

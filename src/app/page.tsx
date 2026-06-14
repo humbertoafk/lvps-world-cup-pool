@@ -18,6 +18,7 @@ import { calculateGroupBreakdown } from "@/utils/scoring";
 import { hasCompleteGroupResult as checkCompleteGroupResult } from "@/utils/results";
 import { getTeamNameFromGroups } from "@/utils/teams";
 import { validatePinCreation } from "@/utils/pin";
+import { validateGroupSelection } from "@/utils/groupValidation";
 import { ui } from "@/styles/ui";
 import type {
   Group,
@@ -83,9 +84,9 @@ export default function Home() {
       setLoggedUser(savedSession.playerName);
       setLoggedPlayerId(savedSession.playerId);
       setIsAdmin(savedSession.isAdmin);
-    
+
       loadSavedPredictions(savedSession.playerId);
-    
+
       loadPlayerStatus(savedSession.playerId).then((status) => {
         if (status?.submitted) {
           loadSubmittedPredictions();
@@ -428,7 +429,8 @@ export default function Home() {
     });
 
     const orderedRows = rows.sort(
-      (a, b) => getGroupOrderIndex(a.group_name) - getGroupOrderIndex(b.group_name)
+      (a, b) =>
+        getGroupOrderIndex(a.group_name) - getGroupOrderIndex(b.group_name)
     );
 
     setSubmittedPredictions(orderedRows);
@@ -443,6 +445,7 @@ export default function Home() {
       setMessage(pinError);
       return;
     }
+
     const hash = await bcrypt.hash(pin, 10);
 
     const { error } = await supabase
@@ -537,30 +540,18 @@ export default function Home() {
       return;
     }
 
-    const groupPrediction = predictions[groupId];
+    const validatedGroup = validateGroupSelection({
+      selection: predictions[groupId],
+      incompleteMessage: "Completa las 4 posiciones del grupo",
+      duplicateMessage: "No puedes repetir equipos en el mismo grupo",
+    });
 
-    if (!groupPrediction) {
-      setMessage("Completa las 4 posiciones del grupo");
+    if (validatedGroup.error || !validatedGroup.values) {
+      setMessage(validatedGroup.error || "Revisa tus selecciones");
       return;
     }
 
-    const first = groupPrediction[1];
-    const second = groupPrediction[2];
-    const third = groupPrediction[3];
-    const fourth = groupPrediction[4];
-
-    if (!first || !second || !third || !fourth) {
-      setMessage("Completa las 4 posiciones del grupo");
-      return;
-    }
-
-    const selectedTeams = [first, second, third, fourth];
-    const uniqueTeams = new Set(selectedTeams);
-
-    if (uniqueTeams.size !== 4) {
-      setMessage("No puedes repetir equipos en el mismo grupo");
-      return;
-    }
+    const { first, second, third, fourth } = validatedGroup.values;
 
     const { error } = await supabase.from("group_predictions").upsert(
       {
@@ -593,30 +584,18 @@ export default function Home() {
       return;
     }
 
-    const result = groupResults[groupId];
+    const validatedResult = validateGroupSelection({
+      selection: groupResults[groupId],
+      incompleteMessage: "Completa las 4 posiciones del resultado oficial",
+      duplicateMessage: "No puedes repetir equipos en el resultado oficial",
+    });
 
-    if (!result) {
-      setMessage("Completa las 4 posiciones del resultado oficial");
+    if (validatedResult.error || !validatedResult.values) {
+      setMessage(validatedResult.error || "Revisa el resultado oficial");
       return;
     }
 
-    const first = result[1];
-    const second = result[2];
-    const third = result[3];
-    const fourth = result[4];
-
-    if (!first || !second || !third || !fourth) {
-      setMessage("Completa las 4 posiciones del resultado oficial");
-      return;
-    }
-
-    const selectedTeams = [first, second, third, fourth];
-    const uniqueTeams = new Set(selectedTeams);
-
-    if (uniqueTeams.size !== 4) {
-      setMessage("No puedes repetir equipos en el resultado oficial");
-      return;
-    }
+    const { first, second, third, fourth } = validatedResult.values;
 
     const updatedResults: GroupResults = {
       ...groupResults,
@@ -806,28 +785,14 @@ export default function Home() {
     }
 
     for (const group of groups) {
-      const groupPrediction = predictions[group.id];
+      const validatedGroup = validateGroupSelection({
+        selection: predictions[group.id],
+        incompleteMessage: `Completa las 4 posiciones de ${group.name}`,
+        duplicateMessage: `No puedes repetir equipos en ${group.name}`,
+      });
 
-      if (!groupPrediction) {
-        setMessage(`Completa ${group.name}`);
-        return;
-      }
-
-      const first = groupPrediction[1];
-      const second = groupPrediction[2];
-      const third = groupPrediction[3];
-      const fourth = groupPrediction[4];
-
-      if (!first || !second || !third || !fourth) {
-        setMessage(`Completa las 4 posiciones de ${group.name}`);
-        return;
-      }
-
-      const selectedTeams = [first, second, third, fourth];
-      const uniqueTeams = new Set(selectedTeams);
-
-      if (uniqueTeams.size !== 4) {
-        setMessage(`No puedes repetir equipos en ${group.name}`);
+      if (validatedGroup.error) {
+        setMessage(validatedGroup.error);
         return;
       }
     }

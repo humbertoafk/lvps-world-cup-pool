@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { AdminPanel } from "@/components/AdminPanel";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { MessagesArea } from "@/components/MessagesArea";
+import { MyQuinielaSection } from "@/components/MyQuinielaSection";
 import { RankingSection } from "@/components/RankingSection";
 import { ResultsSection } from "@/components/ResultsSection";
 import { SubmittedPredictionsSection } from "@/components/SubmittedPredictionsSection";
@@ -1033,99 +1035,20 @@ export default function Home() {
           <RulesCard />
 
           {isAdmin && activeSection === "admin" && (
-            <div className={ui.adminCard}>
-              <h2 className="mb-3 font-bold">Panel de administrador</h2>
-
-              <p className="mb-4 text-sm text-gray-700">
-                Captura aquí los resultados oficiales de cada grupo.
-              </p>
-
-              <button
-                onClick={toggleQuinielaOpen}
-                className={`mb-4 w-full rounded p-2 text-sm font-semibold ${
-                  isQuinielaOpen
-                    ? "bg-red-600 text-white"
-                    : "bg-green-600 text-white"
-                }`}
-              >
-                {isQuinielaOpen ? "Cerrar quiniela" : "Abrir quiniela"}
-              </button>
-
-              <div className={ui.innerCardSpaced}>
-                <h3 className="mb-2 font-semibold">Desbloquear jugador</h3>
-
-                <p className="mb-3 text-xs text-gray-600">
-                  Esto conserva sus picks, pero permite que el jugador vuelva a
-                  editarlos.
-                </p>
-
-                <select
-                  value={adminSelectedPlayerId}
-                  onChange={(e) => setAdminSelectedPlayerId(e.target.value)}
-                  className="mb-2 w-full rounded border p-2 text-sm"
-                >
-                  <option value="">Selecciona jugador</option>
-
-                  {players.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} {p.submitted ? "(enviado)" : "(pendiente)"}
-                    </option>
-                  ))}
-                </select>
-
-                <button
-                  onClick={unlockPlayerSubmission}
-                  className="w-full rounded bg-orange-500 p-2 text-sm font-semibold text-white"
-                >
-                  Desbloquear jugador
-                </button>
-              </div>
-
-              <button
-                onClick={() => loadRanking()}
-                className="mb-4 w-full rounded bg-black p-2 text-sm text-white"
-              >
-                Actualizar ranking
-              </button>
-
-              <div className="space-y-4">
-                {groups.map((group) => (
-                  <div key={group.id} className="rounded border bg-white p-3">
-                    <h3 className="mb-2 font-semibold">{group.name}</h3>
-
-                    {[1, 2, 3, 4].map((position) => (
-                      <select
-                        key={position}
-                        className={ui.smallSelect}
-                        value={groupResults[group.id]?.[position] || ""}
-                        onChange={(e) =>
-                          updateGroupResult(
-                            group.id,
-                            position,
-                            e.target.value
-                          )
-                        }
-                      >
-                        <option value="">Resultado posición {position}</option>
-
-                        {(teamsByGroup[group.id] || []).map((team) => (
-                          <option key={team.id} value={team.id}>
-                            {team.flag_emoji} {team.name}
-                          </option>
-                        ))}
-                      </select>
-                    ))}
-
-                    <button
-                      onClick={() => saveGroupResult(group.id)}
-                      className="mt-2 w-full rounded bg-yellow-500 p-2 text-black"
-                    >
-                      Guardar resultado oficial
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <AdminPanel
+              players={players}
+              groups={groups}
+              teamsByGroup={teamsByGroup}
+              groupResults={groupResults}
+              isQuinielaOpen={isQuinielaOpen}
+              adminSelectedPlayerId={adminSelectedPlayerId}
+              onAdminSelectedPlayerChange={setAdminSelectedPlayerId}
+              onToggleQuinielaOpen={toggleQuinielaOpen}
+              onUnlockPlayerSubmission={unlockPlayerSubmission}
+              onRefreshRanking={() => loadRanking()}
+              onUpdateGroupResult={updateGroupResult}
+              onSaveGroupResult={saveGroupResult}
+            />
           )}
 
           {activeSection === "resumen" && (
@@ -1163,68 +1086,17 @@ export default function Home() {
             />
           )}
 
-          {groups.length === 0 && (
-            <p className="text-sm text-gray-600">No hay grupos cargados.</p>
-          )}
-
           {activeSection === "miQuiniela" && (
-            <div className="space-y-6">
-              {groups.map((group) => (
-                <div key={group.id} className={ui.cardPlain}>
-                  <h2 className="mb-3 font-bold">{group.name}</h2>
-
-                  {(teamsByGroup[group.id] || []).length === 0 && (
-                    <p className="mb-3 text-sm text-red-600">
-                      Este grupo no tiene equipos cargados.
-                    </p>
-                  )}
-
-                  {[1, 2, 3, 4].map((position) => (
-                    <select
-                      key={position}
-                      disabled={isSubmitted || !isQuinielaOpen}
-                      className={ui.smallSelect}
-                      value={predictions[group.id]?.[position] || ""}
-                      onChange={(e) =>
-                        updatePrediction(group.id, position, e.target.value)
-                      }
-                    >
-                      <option value="">Posición {position}</option>
-
-                      {(teamsByGroup[group.id] || []).map((team) => (
-                        <option key={team.id} value={team.id}>
-                          {team.flag_emoji} {team.name}
-                        </option>
-                      ))}
-                    </select>
-                  ))}
-
-                  <button
-                    disabled={isSubmitted || !isQuinielaOpen}
-                    onClick={() => saveGroupPrediction(group.id)}
-                    className={ui.buttonGreen}
-                  >
-                    Guardar grupo
-                  </button>
-                </div>
-              ))}
-
-              <div className={ui.cardPlain}>
-                {isSubmitted ? (
-                  <p className="font-semibold text-green-700">
-                    Quiniela enviada. Tus picks están bloqueados.
-                  </p>
-                ) : (
-                  <button
-                    disabled={!isQuinielaOpen}
-                    onClick={submitFinalPredictions}
-                    className={ui.buttonSubmit}
-                  >
-                    Enviar quiniela final
-                  </button>
-                )}
-              </div>
-            </div>
+            <MyQuinielaSection
+              groups={groups}
+              teamsByGroup={teamsByGroup}
+              predictions={predictions}
+              isSubmitted={isSubmitted}
+              isQuinielaOpen={isQuinielaOpen}
+              onUpdatePrediction={updatePrediction}
+              onSaveGroupPrediction={saveGroupPrediction}
+              onSubmitFinalPredictions={submitFinalPredictions}
+            />
           )}
         </div>
 

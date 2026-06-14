@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNavigation } from "@/components/BottomNavigation";
+import { StatusSection } from "@/components/StatusSection";
 import { ui } from "@/styles/ui";
 import type { SectionId } from "@/types/sections";
 import bcrypt from "bcryptjs";
@@ -1144,37 +1145,7 @@ export default function Home() {
           )}
 
           {activeSection === "resumen" && (
-            <div className={ui.card}>
-              <div className={ui.sectionHeader}>
-                <h2 className={ui.sectionTitle}>Estado de entregas</h2>
-
-                <button
-                  onClick={refreshPlayers}
-                  className={ui.buttonSmall}
-                >
-                  Actualizar
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                {players.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center justify-between text-sm"
-                  >
-                    <span>{p.name}</span>
-
-                    {p.submitted ? (
-                      <span className="font-semibold text-green-700">
-                        ✅ Enviado
-                      </span>
-                    ) : (
-                      <span className="text-gray-500">⏳ Pendiente</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <StatusSection players={players} onRefresh={refreshPlayers} />
           )}
 
           {activeSection === "ranking" && (

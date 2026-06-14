@@ -93,6 +93,7 @@ export default function Home() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isQuinielaOpen, setIsQuinielaOpen] = useState(true);
+  const [adminSelectedPlayerId, setAdminSelectedPlayerId] = useState("");
 
   useEffect(() => {
     loadPlayers();
@@ -736,7 +737,7 @@ export default function Home() {
         ? "¿Seguro que quieres abrir la quiniela otra vez?"
         : "¿Seguro que quieres cerrar la quiniela? Nadie podrá guardar ni enviar picks."
     );
-    
+
     if (!confirmed) {
       return;
     }
@@ -762,6 +763,87 @@ export default function Home() {
         ? "Quiniela abierta correctamente"
         : "Quiniela cerrada correctamente"
     );
+  }
+
+  async function unlockPlayerSubmission() {
+    if (!isAdmin) {
+      setMessage("No tienes permisos de administrador");
+      return;
+    }
+
+    if (!adminSelectedPlayerId) {
+      setMessage("Selecciona un jugador para desbloquear");
+      return;
+    }
+
+    const selectedPlayerToUnlock = players.find(
+      (p) => p.id === adminSelectedPlayerId
+    );
+
+    const confirmed = window.confirm(
+      `¿Seguro que quieres desbloquear la quiniela de ${
+        selectedPlayerToUnlock?.name || "este jugador"
+      }? Sus picks se conservarán, pero podrá modificarlos otra vez.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const { error: playerError } = await supabase
+      .from("players")
+      .update({
+        submitted: false,
+        submitted_at: null,
+      })
+      .eq("id", adminSelectedPlayerId);
+
+    if (playerError) {
+      console.error(playerError);
+      setMessage("Error al desbloquear jugador");
+      return;
+    }
+
+    const { error: predictionsError } = await supabase
+      .from("group_predictions")
+      .update({
+        submitted: false,
+        submitted_at: null,
+      })
+      .eq("player_id", adminSelectedPlayerId);
+
+    if (predictionsError) {
+      console.error(predictionsError);
+      setMessage("Error al desbloquear pronósticos del jugador");
+      return;
+    }
+
+    setPlayers((prev) =>
+      prev.map((p) =>
+        p.id === adminSelectedPlayerId
+          ? {
+              ...p,
+              submitted: false,
+              submitted_at: null,
+            }
+          : p
+      )
+    );
+
+    if (loggedPlayerId === adminSelectedPlayerId) {
+      setIsSubmitted(false);
+    }
+
+    await loadSubmittedPredictions();
+    await loadRanking(groupResults);
+
+    setMessage(
+      `Quiniela de ${
+        selectedPlayerToUnlock?.name || "jugador"
+      } desbloqueada correctamente`
+    );
+
+    setAdminSelectedPlayerId("");
   }
 
   async function submitFinalPredictions() {
@@ -948,6 +1030,35 @@ export default function Home() {
               >
                 {isQuinielaOpen ? "Cerrar quiniela" : "Abrir quiniela"}
               </button>
+
+              <div className="mb-4 rounded border bg-white p-3">
+                <h3 className="mb-2 font-semibold">Desbloquear jugador</h3>
+                            
+                <p className="mb-3 text-xs text-gray-600">
+                  Esto conserva sus picks, pero permite que el jugador vuelva a editarlos.
+                </p>
+                            
+                <select
+                  value={adminSelectedPlayerId}
+                  onChange={(e) => setAdminSelectedPlayerId(e.target.value)}
+                  className="mb-2 w-full rounded border p-2 text-sm"
+                >
+                  <option value="">Selecciona jugador</option>
+                            
+                  {players.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.submitted ? "(enviado)" : "(pendiente)"}
+                    </option>
+                  ))}
+                </select>
+                
+                <button
+                  onClick={unlockPlayerSubmission}
+                  className="w-full rounded bg-orange-500 p-2 text-sm font-semibold text-white"
+                >
+                  Desbloquear jugador
+                </button>
+              </div>
 
               <button
                 onClick={() => loadRanking()}

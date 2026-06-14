@@ -5,6 +5,9 @@ import { supabase } from "@/lib/supabase";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { MessagesArea } from "@/components/MessagesArea";
+import { RankingSection } from "@/components/RankingSection";
+import { ResultsSection } from "@/components/ResultsSection";
+import { SubmittedPredictionsSection } from "@/components/SubmittedPredictionsSection";
 import { RulesCard } from "@/components/RulesCard";
 import { StatusSection } from "@/components/StatusSection";
 import { ui } from "@/styles/ui";
@@ -1130,254 +1133,34 @@ export default function Home() {
           )}
 
           {activeSection === "ranking" && (
-            <div className={ui.card}>
-              <div className={ui.sectionHeader}>
-                <h2 className={ui.sectionTitle}>Ranking</h2>
-
-                <button
-                  onClick={() => loadRanking()}
-                  className={ui.buttonSmall}
-                >
-                  Actualizar
-                </button>
-              </div>
-
-              {ranking.length === 0 ? (
-                <p className="text-sm text-gray-500">
-                  Todavía no hay puntos calculados.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {ranking.map((row, index) => (
-                    <div
-                      key={row.player_id}
-                      className={`${ui.innerCard} text-sm`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold">
-                          {index + 1}. {row.player_name}
-                        </span>
-
-                        <span className="font-bold">
-                          {row.total_points} pts
-                        </span>
-                      </div>
-
-                      <div className="mt-2 space-y-1 border-t pt-2 text-xs text-gray-600">
-                        {row.details.map((detail) => (
-                          <div
-                            key={detail.group_id}
-                            className="rounded border p-2"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium">
-                                {detail.group_name}
-                              </span>
-
-                              {detail.status === "pending_result" ? (
-                                <span className="text-gray-500">
-                                  Pendiente
-                                </span>
-                              ) : (
-                                <span className="font-semibold">
-                                  {detail.points} pts
-                                </span>
-                              )}
-                            </div>
-
-                            {detail.status === "calculated" && (
-                              <div className="mt-2 space-y-1 text-xs text-gray-600">
-                                {detail.positions.map((positionDetail) => (
-                                  <div
-                                    key={positionDetail.position}
-                                    className="flex items-start justify-between gap-3"
-                                  >
-                                    <div>
-                                      <p>
-                                        {positionDetail.position}. Pick:{" "}
-                                        {getTeamName(
-                                          positionDetail.predicted_team_id
-                                        )}
-                                      </p>
-                                      <p className="text-gray-400">
-                                        Real:{" "}
-                                        {getTeamName(
-                                          positionDetail.real_team_id
-                                        )}
-                                      </p>
-                                    </div>
-
-                                    <div className="text-right">
-                                      <p className="font-semibold">
-                                        +{positionDetail.points}
-                                      </p>
-
-                                      {positionDetail.reason === "exact" && (
-                                        <p className="text-green-700">
-                                          Exacto
-                                        </p>
-                                      )}
-
-                                      {positionDetail.reason ===
-                                        "top2_inverted" && (
-                                        <p className="text-yellow-700">
-                                          Clasificado
-                                        </p>
-                                      )}
-
-                                      {positionDetail.reason === "wrong" && (
-                                        <p className="text-gray-400">
-                                          Sin puntos
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <RankingSection
+              ranking={ranking}
+              onRefresh={() => loadRanking()}
+              getTeamName={getTeamName}
+            />
           )}
 
           {activeSection === "resultados" && (
-            <div className={ui.card}>
-              <div className={ui.sectionHeader}>
-                <h2 className={ui.sectionTitle}>Resultados oficiales</h2>
-
-                <button
-                  onClick={async () => {
-                    const loadedResults = await loadGroupResults();
-                    await loadRanking(loadedResults, groups);
-                  }}
-                  className={ui.buttonSmall}
-                >
-                  Actualizar
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {groups.map((group) => {
-                  const result = groupResults[group.id];
-
-                  return (
-                    <div key={group.id} className={`${ui.innerCard} text-sm`}>
-                      <div className="mb-2 flex items-center justify-between">
-                        <h3 className="font-semibold">{group.name}</h3>
-
-                        {hasCompleteGroupResult(group.id) ? (
-                          <span className="text-xs font-semibold text-green-700">
-                            Capturado
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-500">
-                            Pendiente
-                          </span>
-                        )}
-                      </div>
-
-                      {hasCompleteGroupResult(group.id) && result ? (
-                        <div className="space-y-1 text-xs text-gray-600">
-                          <p>1. {getTeamName(result[1])}</p>
-                          <p>2. {getTeamName(result[2])}</p>
-                          <p>3. {getTeamName(result[3])}</p>
-                          <p>4. {getTeamName(result[4])}</p>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-gray-500">
-                          Resultado oficial todavía no capturado.
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <ResultsSection
+              groups={groups}
+              groupResults={groupResults}
+              onRefresh={async () => {
+                const loadedResults = await loadGroupResults();
+                await loadRanking(loadedResults, groups);
+              }}
+              hasCompleteGroupResult={hasCompleteGroupResult}
+              getTeamName={getTeamName}
+            />
           )}
 
           {activeSection === "pronosticos" && (
-            <div className={ui.card}>
-              <div className={ui.sectionHeader}>
-                <h2 className={ui.sectionTitle}>Pronósticos enviados</h2>
-
-                <button
-                  onClick={loadSubmittedPredictions}
-                  className={ui.buttonSmall}
-                >
-                  Actualizar
-                </button>
-              </div>
-
-              {!isSubmitted ? (
-                <p className="text-sm text-gray-500">
-                  Envía tu quiniela final para poder ver los pronósticos
-                  enviados.
-                </p>
-              ) : submittedPredictions.length === 0 ? (
-                <p className="text-sm text-gray-500">
-                  Todavía no hay pronósticos enviados.
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {players
-                    .filter((p) => p.submitted)
-                    .map((submittedPlayer) => {
-                      const playerPredictions = submittedPredictions.filter(
-                        (prediction) =>
-                          prediction.player_id === submittedPlayer.id
-                      );
-
-                      return (
-                        <div
-                          key={submittedPlayer.id}
-                          className={ui.innerCard}
-                        >
-                          <h3 className="mb-2 font-semibold">
-                            {submittedPlayer.name}
-                          </h3>
-
-                          <div className="space-y-3">
-                            {playerPredictions.map((prediction) => (
-                              <div
-                                key={prediction.group_id}
-                                className="text-sm"
-                              >
-                                <p className="font-medium">
-                                  {prediction.group_name}
-                                </p>
-
-                                <div className="mt-1 space-y-1 text-xs text-gray-600">
-                                  <p>
-                                    1.{" "}
-                                    {getTeamName(prediction.first_team_id)}
-                                  </p>
-                                  <p>
-                                    2.{" "}
-                                    {getTeamName(prediction.second_team_id)}
-                                  </p>
-                                  <p>
-                                    3.{" "}
-                                    {getTeamName(prediction.third_team_id)}
-                                  </p>
-                                  <p>
-                                    4.{" "}
-                                    {getTeamName(prediction.fourth_team_id)}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-            </div>
+            <SubmittedPredictionsSection
+              isSubmitted={isSubmitted}
+              players={players}
+              submittedPredictions={submittedPredictions}
+              onRefresh={loadSubmittedPredictions}
+              getTeamName={getTeamName}
+            />
           )}
 
           {groups.length === 0 && (

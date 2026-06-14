@@ -63,6 +63,14 @@ type SubmittedPredictionRow = {
   fourth_team_id: string | null;
 };
 
+type SectionId =
+  | "resumen"
+  | "ranking"
+  | "resultados"
+  | "pronosticos"
+  | "miQuiniela"
+  | "admin";
+
 const GROUP_ORDER = [
   "Grupo A",
   "Grupo B",
@@ -108,6 +116,7 @@ export default function Home() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isQuinielaOpen, setIsQuinielaOpen] = useState(true);
   const [adminSelectedPlayerId, setAdminSelectedPlayerId] = useState("");
+  const [activeSection, setActiveSection] = useState<SectionId>("resumen");
 
   useEffect(() => {
     loadPlayers();
@@ -332,6 +341,14 @@ export default function Home() {
     if (!result) return false;
 
     return Boolean(result[1] && result[2] && result[3] && result[4]);
+  }
+
+  function getSectionButtonClass(sectionId: SectionId) {
+    return `rounded px-2 py-2 text-[11px] font-semibold ${
+      activeSection === sectionId
+        ? "bg-black text-white"
+        : "bg-white text-gray-700"
+    }`;
   }
 
   function calculateGroupBreakdown(
@@ -603,6 +620,7 @@ export default function Home() {
     setLoggedPlayerId(player.id);
     setIsSubmitted(player.submitted);
     setIsAdmin(player.is_admin);
+    setActiveSection("resumen");
 
     await loadSavedPredictions(player.id);
 
@@ -630,6 +648,7 @@ export default function Home() {
     setSubmittedPredictions([]);
     setIsSubmitted(false);
     setIsAdmin(false);
+    setActiveSection("resumen");
   }
 
   async function saveGroupPrediction(groupId: string) {
@@ -1007,7 +1026,7 @@ export default function Home() {
 
   if (loggedUser) {
     return (
-      <main className="min-h-screen bg-white">
+      <main className="min-h-screen bg-white pb-32">
         <div className="mx-auto w-full max-w-md p-6">
           <div className="mb-6 flex items-center justify-between">
             <div>
@@ -1054,7 +1073,7 @@ export default function Home() {
             </div>
           </div>
 
-          {isAdmin && (
+          {isAdmin && activeSection === "admin" && (
             <div className="mb-6 rounded border border-yellow-300 bg-yellow-50 p-4">
               <h2 className="mb-3 font-bold">Panel de administrador</h2>
 
@@ -1150,317 +1169,403 @@ export default function Home() {
             </div>
           )}
 
-          <div className="mb-6 rounded border p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-bold">Estado de entregas</h2>
+          {activeSection === "resumen" && (
+            <div className="mb-6 rounded border p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="font-bold">Estado de entregas</h2>
 
-              <button
-                onClick={refreshPlayers}
-                className="rounded border px-3 py-1 text-xs"
-              >
-                Actualizar
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              {players.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between text-sm"
+                <button
+                  onClick={refreshPlayers}
+                  className="rounded border px-3 py-1 text-xs"
                 >
-                  <span>{p.name}</span>
+                  Actualizar
+                </button>
+              </div>
 
-                  {p.submitted ? (
-                    <span className="font-semibold text-green-700">
-                      ✅ Enviado
-                    </span>
-                  ) : (
-                    <span className="text-gray-500">⏳ Pendiente</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mb-6 rounded border p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-bold">Ranking</h2>
-
-              <button
-                onClick={() => loadRanking()}
-                className="rounded border px-3 py-1 text-xs"
-              >
-                Actualizar
-              </button>
-            </div>
-
-            {ranking.length === 0 ? (
-              <p className="text-sm text-gray-500">
-                Todavía no hay puntos calculados.
-              </p>
-            ) : (
               <div className="space-y-2">
-                {ranking.map((row, index) => (
-                  <div key={row.player_id} className="rounded border p-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold">
-                        {index + 1}. {row.player_name}
+                {players.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <span>{p.name}</span>
+
+                    {p.submitted ? (
+                      <span className="font-semibold text-green-700">
+                        ✅ Enviado
                       </span>
-
-                      <span className="font-bold">{row.total_points} pts</span>
-                    </div>
-
-                    <div className="mt-2 space-y-1 border-t pt-2 text-xs text-gray-600">
-                      {row.details.map((detail) => (
-                        <div key={detail.group_id} className="rounded border p-2">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium">
-                              {detail.group_name}
-                            </span>
-
-                            {detail.status === "pending_result" ? (
-                              <span className="text-gray-500">Pendiente</span>
-                            ) : (
-                              <span className="font-semibold">
-                                {detail.points} pts
-                              </span>
-                            )}
-                          </div>
-
-                          {detail.status === "calculated" && (
-                            <div className="mt-2 space-y-1 text-xs text-gray-600">
-                              {detail.positions.map((positionDetail) => (
-                                <div
-                                  key={positionDetail.position}
-                                  className="flex items-start justify-between gap-3"
-                                >
-                                  <div>
-                                    <p>
-                                      {positionDetail.position}. Pick:{" "}
-                                      {getTeamName(
-                                        positionDetail.predicted_team_id
-                                      )}
-                                    </p>
-                                    <p className="text-gray-400">
-                                      Real:{" "}
-                                      {getTeamName(positionDetail.real_team_id)}
-                                    </p>
-                                  </div>
-
-                                  <div className="text-right">
-                                    <p className="font-semibold">
-                                      +{positionDetail.points}
-                                    </p>
-
-                                    {positionDetail.reason === "exact" && (
-                                      <p className="text-green-700">Exacto</p>
-                                    )}
-
-                                    {positionDetail.reason ===
-                                      "top2_inverted" && (
-                                      <p className="text-yellow-700">
-                                        Clasificado
-                                      </p>
-                                    )}
-
-                                    {positionDetail.reason === "wrong" && (
-                                      <p className="text-gray-400">
-                                        Sin puntos
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                    ) : (
+                      <span className="text-gray-500">⏳ Pendiente</span>
+                    )}
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-
-          <div className="mb-6 rounded border p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-bold">Resultados oficiales</h2>
-
-              <button
-                onClick={async () => {
-                  const loadedResults = await loadGroupResults();
-                  await loadRanking(loadedResults, groups);
-                }}
-                className="rounded border px-3 py-1 text-xs"
-              >
-                Actualizar
-              </button>
             </div>
+          )}
 
-            <div className="space-y-4">
-              {groups.map((group) => {
-                const result = groupResults[group.id];
+          {activeSection === "ranking" && (
+            <div className="mb-6 rounded border p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="font-bold">Ranking</h2>
 
-                return (
-                  <div key={group.id} className="rounded border p-3 text-sm">
-                    <div className="mb-2 flex items-center justify-between">
-                      <h3 className="font-semibold">{group.name}</h3>
+                <button
+                  onClick={() => loadRanking()}
+                  className="rounded border px-3 py-1 text-xs"
+                >
+                  Actualizar
+                </button>
+              </div>
 
-                      {hasCompleteGroupResult(group.id) ? (
-                        <span className="text-xs font-semibold text-green-700">
-                          Capturado
+              {ranking.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  Todavía no hay puntos calculados.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {ranking.map((row, index) => (
+                    <div
+                      key={row.player_id}
+                      className="rounded border p-3 text-sm"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">
+                          {index + 1}. {row.player_name}
                         </span>
+
+                        <span className="font-bold">
+                          {row.total_points} pts
+                        </span>
+                      </div>
+
+                      <div className="mt-2 space-y-1 border-t pt-2 text-xs text-gray-600">
+                        {row.details.map((detail) => (
+                          <div
+                            key={detail.group_id}
+                            className="rounded border p-2"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">
+                                {detail.group_name}
+                              </span>
+
+                              {detail.status === "pending_result" ? (
+                                <span className="text-gray-500">
+                                  Pendiente
+                                </span>
+                              ) : (
+                                <span className="font-semibold">
+                                  {detail.points} pts
+                                </span>
+                              )}
+                            </div>
+
+                            {detail.status === "calculated" && (
+                              <div className="mt-2 space-y-1 text-xs text-gray-600">
+                                {detail.positions.map((positionDetail) => (
+                                  <div
+                                    key={positionDetail.position}
+                                    className="flex items-start justify-between gap-3"
+                                  >
+                                    <div>
+                                      <p>
+                                        {positionDetail.position}. Pick:{" "}
+                                        {getTeamName(
+                                          positionDetail.predicted_team_id
+                                        )}
+                                      </p>
+                                      <p className="text-gray-400">
+                                        Real:{" "}
+                                        {getTeamName(
+                                          positionDetail.real_team_id
+                                        )}
+                                      </p>
+                                    </div>
+
+                                    <div className="text-right">
+                                      <p className="font-semibold">
+                                        +{positionDetail.points}
+                                      </p>
+
+                                      {positionDetail.reason === "exact" && (
+                                        <p className="text-green-700">
+                                          Exacto
+                                        </p>
+                                      )}
+
+                                      {positionDetail.reason ===
+                                        "top2_inverted" && (
+                                        <p className="text-yellow-700">
+                                          Clasificado
+                                        </p>
+                                      )}
+
+                                      {positionDetail.reason === "wrong" && (
+                                        <p className="text-gray-400">
+                                          Sin puntos
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeSection === "resultados" && (
+            <div className="mb-6 rounded border p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="font-bold">Resultados oficiales</h2>
+
+                <button
+                  onClick={async () => {
+                    const loadedResults = await loadGroupResults();
+                    await loadRanking(loadedResults, groups);
+                  }}
+                  className="rounded border px-3 py-1 text-xs"
+                >
+                  Actualizar
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {groups.map((group) => {
+                  const result = groupResults[group.id];
+
+                  return (
+                    <div key={group.id} className="rounded border p-3 text-sm">
+                      <div className="mb-2 flex items-center justify-between">
+                        <h3 className="font-semibold">{group.name}</h3>
+
+                        {hasCompleteGroupResult(group.id) ? (
+                          <span className="text-xs font-semibold text-green-700">
+                            Capturado
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-500">
+                            Pendiente
+                          </span>
+                        )}
+                      </div>
+
+                      {hasCompleteGroupResult(group.id) && result ? (
+                        <div className="space-y-1 text-xs text-gray-600">
+                          <p>1. {getTeamName(result[1])}</p>
+                          <p>2. {getTeamName(result[2])}</p>
+                          <p>3. {getTeamName(result[3])}</p>
+                          <p>4. {getTeamName(result[4])}</p>
+                        </div>
                       ) : (
-                        <span className="text-xs text-gray-500">Pendiente</span>
+                        <p className="text-xs text-gray-500">
+                          Resultado oficial todavía no capturado.
+                        </p>
                       )}
                     </div>
-
-                    {hasCompleteGroupResult(group.id) && result ? (
-                      <div className="space-y-1 text-xs text-gray-600">
-                        <p>1. {getTeamName(result[1])}</p>
-                        <p>2. {getTeamName(result[2])}</p>
-                        <p>3. {getTeamName(result[3])}</p>
-                        <p>4. {getTeamName(result[4])}</p>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-500">
-                        Resultado oficial todavía no capturado.
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mb-6 rounded border p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-bold">Pronósticos enviados</h2>
-
-              <button
-                onClick={loadSubmittedPredictions}
-                className="rounded border px-3 py-1 text-xs"
-              >
-                Actualizar
-              </button>
-            </div>
-
-            {!isSubmitted ? (
-              <p className="text-sm text-gray-500">
-                Envía tu quiniela final para poder ver los pronósticos enviados.
-              </p>
-            ) : submittedPredictions.length === 0 ? (
-              <p className="text-sm text-gray-500">
-                Todavía no hay pronósticos enviados.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {players
-                  .filter((p) => p.submitted)
-                  .map((submittedPlayer) => {
-                    const playerPredictions = submittedPredictions.filter(
-                      (prediction) => prediction.player_id === submittedPlayer.id
-                    );
-
-                    return (
-                      <div key={submittedPlayer.id} className="rounded border p-3">
-                        <h3 className="mb-2 font-semibold">
-                          {submittedPlayer.name}
-                        </h3>
-
-                        <div className="space-y-3">
-                          {playerPredictions.map((prediction) => (
-                            <div key={prediction.group_id} className="text-sm">
-                              <p className="font-medium">
-                                {prediction.group_name}
-                              </p>
-
-                              <div className="mt-1 space-y-1 text-xs text-gray-600">
-                                <p>
-                                  1. {getTeamName(prediction.first_team_id)}
-                                </p>
-                                <p>
-                                  2. {getTeamName(prediction.second_team_id)}
-                                </p>
-                                <p>
-                                  3. {getTeamName(prediction.third_team_id)}
-                                </p>
-                                <p>
-                                  4. {getTeamName(prediction.fourth_team_id)}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  );
+                })}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {activeSection === "pronosticos" && (
+            <div className="mb-6 rounded border p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="font-bold">Pronósticos enviados</h2>
+
+                <button
+                  onClick={loadSubmittedPredictions}
+                  className="rounded border px-3 py-1 text-xs"
+                >
+                  Actualizar
+                </button>
+              </div>
+
+              {!isSubmitted ? (
+                <p className="text-sm text-gray-500">
+                  Envía tu quiniela final para poder ver los pronósticos
+                  enviados.
+                </p>
+              ) : submittedPredictions.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  Todavía no hay pronósticos enviados.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {players
+                    .filter((p) => p.submitted)
+                    .map((submittedPlayer) => {
+                      const playerPredictions = submittedPredictions.filter(
+                        (prediction) =>
+                          prediction.player_id === submittedPlayer.id
+                      );
+
+                      return (
+                        <div
+                          key={submittedPlayer.id}
+                          className="rounded border p-3"
+                        >
+                          <h3 className="mb-2 font-semibold">
+                            {submittedPlayer.name}
+                          </h3>
+
+                          <div className="space-y-3">
+                            {playerPredictions.map((prediction) => (
+                              <div
+                                key={prediction.group_id}
+                                className="text-sm"
+                              >
+                                <p className="font-medium">
+                                  {prediction.group_name}
+                                </p>
+
+                                <div className="mt-1 space-y-1 text-xs text-gray-600">
+                                  <p>
+                                    1.{" "}
+                                    {getTeamName(prediction.first_team_id)}
+                                  </p>
+                                  <p>
+                                    2.{" "}
+                                    {getTeamName(prediction.second_team_id)}
+                                  </p>
+                                  <p>
+                                    3.{" "}
+                                    {getTeamName(prediction.third_team_id)}
+                                  </p>
+                                  <p>
+                                    4.{" "}
+                                    {getTeamName(prediction.fourth_team_id)}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          )}
 
           {groups.length === 0 && (
             <p className="text-sm text-gray-600">No hay grupos cargados.</p>
           )}
 
-          <div className="space-y-6">
-            {groups.map((group) => (
-              <div key={group.id} className="rounded border p-4">
-                <h2 className="mb-3 font-bold">{group.name}</h2>
+          {activeSection === "miQuiniela" && (
+            <div className="space-y-6">
+              {groups.map((group) => (
+                <div key={group.id} className="rounded border p-4">
+                  <h2 className="mb-3 font-bold">{group.name}</h2>
 
-                {(teamsByGroup[group.id] || []).length === 0 && (
-                  <p className="mb-3 text-sm text-red-600">
-                    Este grupo no tiene equipos cargados.
-                  </p>
-                )}
+                  {(teamsByGroup[group.id] || []).length === 0 && (
+                    <p className="mb-3 text-sm text-red-600">
+                      Este grupo no tiene equipos cargados.
+                    </p>
+                  )}
 
-                {[1, 2, 3, 4].map((position) => (
-                  <select
-                    key={position}
+                  {[1, 2, 3, 4].map((position) => (
+                    <select
+                      key={position}
+                      disabled={isSubmitted || !isQuinielaOpen}
+                      className="mb-2 w-full rounded border p-2 disabled:bg-gray-100"
+                      value={predictions[group.id]?.[position] || ""}
+                      onChange={(e) =>
+                        updatePrediction(group.id, position, e.target.value)
+                      }
+                    >
+                      <option value="">Posición {position}</option>
+
+                      {(teamsByGroup[group.id] || []).map((team) => (
+                        <option key={team.id} value={team.id}>
+                          {team.flag_emoji} {team.name}
+                        </option>
+                      ))}
+                    </select>
+                  ))}
+
+                  <button
                     disabled={isSubmitted || !isQuinielaOpen}
-                    className="mb-2 w-full rounded border p-2 disabled:bg-gray-100"
-                    value={predictions[group.id]?.[position] || ""}
-                    onChange={(e) =>
-                      updatePrediction(group.id, position, e.target.value)
-                    }
+                    onClick={() => saveGroupPrediction(group.id)}
+                    className="mt-2 w-full rounded bg-green-600 p-2 text-white disabled:bg-gray-400"
                   >
-                    <option value="">Posición {position}</option>
+                    Guardar grupo
+                  </button>
+                </div>
+              ))}
 
-                    {(teamsByGroup[group.id] || []).map((team) => (
-                      <option key={team.id} value={team.id}>
-                        {team.flag_emoji} {team.name}
-                      </option>
-                    ))}
-                  </select>
-                ))}
-
-                <button
-                  disabled={isSubmitted || !isQuinielaOpen}
-                  onClick={() => saveGroupPrediction(group.id)}
-                  className="mt-2 w-full rounded bg-green-600 p-2 text-white disabled:bg-gray-400"
-                >
-                  Guardar grupo
-                </button>
+              <div className="rounded border p-4">
+                {isSubmitted ? (
+                  <p className="font-semibold text-green-700">
+                    Quiniela enviada. Tus picks están bloqueados.
+                  </p>
+                ) : (
+                  <button
+                    disabled={!isQuinielaOpen}
+                    onClick={submitFinalPredictions}
+                    className="w-full rounded bg-black p-3 text-white disabled:bg-gray-400"
+                  >
+                    Enviar quiniela final
+                  </button>
+                )}
               </div>
-            ))}
-
-            <div className="rounded border p-4">
-              {isSubmitted ? (
-                <p className="font-semibold text-green-700">
-                  Quiniela enviada. Tus picks están bloqueados.
-                </p>
-              ) : (
-                <button
-                  disabled={!isQuinielaOpen}
-                  onClick={submitFinalPredictions}
-                  className="w-full rounded bg-black p-3 text-white disabled:bg-gray-400"
-                >
-                  Enviar quiniela final
-                </button>
-              )}
             </div>
-          </div>
+          )}
         </div>
+
+        <nav className="fixed bottom-0 left-0 right-0 border-t bg-white p-2">
+          <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
+            <button
+              onClick={() => setActiveSection("resumen")}
+              className={getSectionButtonClass("resumen")}
+            >
+              Resumen
+            </button>
+
+            <button
+              onClick={() => setActiveSection("ranking")}
+              className={getSectionButtonClass("ranking")}
+            >
+              Ranking
+            </button>
+
+            <button
+              onClick={() => setActiveSection("resultados")}
+              className={getSectionButtonClass("resultados")}
+            >
+              Resultados
+            </button>
+
+            <button
+              onClick={() => setActiveSection("pronosticos")}
+              className={getSectionButtonClass("pronosticos")}
+            >
+              Picks
+            </button>
+
+            <button
+              onClick={() => setActiveSection("miQuiniela")}
+              className={getSectionButtonClass("miQuiniela")}
+            >
+              Quiniela
+            </button>
+
+            {isAdmin && (
+              <button
+                onClick={() => setActiveSection("admin")}
+                className={getSectionButtonClass("admin")}
+              >
+                Admin
+              </button>
+            )}
+          </div>
+        </nav>
       </main>
     );
   }

@@ -10,9 +10,13 @@ export const ui = {
   subtitle: "text-sm text-neutral-400",
 
   card: "mb-6 rounded border border-neutral-800 bg-neutral-900 p-4",
+  cardPlain: "rounded border border-neutral-800 bg-neutral-900 p-4",
   innerCard: "rounded border border-neutral-800 bg-neutral-950 p-3",
-  groupCard: "rounded border border-neutral-800 bg-neutral-900 p-4",
+  innerCardSpaced: "mb-4 rounded border border-neutral-800 bg-neutral-950 p-3",
+
+  sectionHeader: "mb-3 flex items-center justify-between",
   sectionTitle: "font-bold",
+  groupTitle: "mb-2 font-semibold",
 
   message:
     "mb-4 rounded border border-neutral-700 bg-neutral-900 p-3 text-sm text-neutral-200",
@@ -22,6 +26,11 @@ export const ui = {
 
   dangerMessage:
     "mb-4 rounded border border-red-700 bg-red-950/30 p-3 text-sm font-semibold text-red-400",
+
+  mutedText: "text-neutral-400",
+  mutedTextSmall: "text-sm text-neutral-400",
+  mutedTextXs: "text-xs text-neutral-500",
+  bodyText: "text-sm text-neutral-300",
 
   input:
     "w-full rounded border border-neutral-700 bg-neutral-950 p-3 text-neutral-100 outline-none placeholder:text-neutral-500",
@@ -36,6 +45,8 @@ export const ui = {
   buttonBlue: "w-full rounded bg-blue-600 p-3 text-white",
   buttonGreen:
     "mt-2 w-full rounded bg-green-600 p-2 text-white disabled:bg-neutral-700 disabled:text-neutral-400",
+  buttonSubmit:
+    "w-full rounded bg-white p-3 font-semibold text-black disabled:bg-neutral-700 disabled:text-neutral-400",
   buttonYellow: "mt-2 w-full rounded bg-yellow-500 p-2 text-black",
   buttonOrange:
     "w-full rounded bg-orange-500 p-2 text-sm font-semibold text-white",
@@ -43,6 +54,9 @@ export const ui = {
     "rounded border border-neutral-700 px-3 py-1 text-xs text-neutral-300",
   buttonLogout:
     "rounded border border-neutral-700 px-3 py-2 text-sm text-neutral-300",
+
+  adminCard:
+    "mb-6 rounded border border-yellow-700 bg-yellow-950/30 p-4",
 
   bottomNav:
     "fixed bottom-0 left-0 right-0 border-t border-neutral-800 bg-neutral-950 p-2",

@@ -1033,7 +1033,7 @@ export default function Home() {
 
             <button
               onClick={logout}
-              className="rounded border px-3 py-2 text-sm"
+              className={ui.buttonLogout}
             >
               Salir
             </button>
@@ -1069,7 +1069,7 @@ export default function Home() {
           </div>
 
           {isAdmin && activeSection === "admin" && (
-            <div className="mb-6 rounded border border-yellow-300 bg-yellow-50 p-4">
+            <div className={ui.adminCard}>
               <h2 className="mb-3 font-bold">Panel de administrador</h2>
 
               <p className="mb-4 text-sm text-gray-700">
@@ -1087,7 +1087,7 @@ export default function Home() {
                 {isQuinielaOpen ? "Cerrar quiniela" : "Abrir quiniela"}
               </button>
 
-              <div className="mb-4 rounded border bg-white p-3">
+              <div className={ui.innerCardSpaced}>
                 <h3 className="mb-2 font-semibold">Desbloquear jugador</h3>
 
                 <p className="mb-3 text-xs text-gray-600">
@@ -1132,7 +1132,7 @@ export default function Home() {
                     {[1, 2, 3, 4].map((position) => (
                       <select
                         key={position}
-                        className="mb-2 w-full rounded border p-2"
+                        className={ui.smallSelect}
                         value={groupResults[group.id]?.[position] || ""}
                         onChange={(e) =>
                           updateGroupResult(
@@ -1165,13 +1165,13 @@ export default function Home() {
           )}
 
           {activeSection === "resumen" && (
-            <div className="mb-6 rounded border p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="font-bold">Estado de entregas</h2>
+            <div className={ui.card}>
+              <div className={ui.sectionHeader}>
+                <h2 className={ui.sectionTitle}>Estado de entregas</h2>
 
                 <button
                   onClick={refreshPlayers}
-                  className="rounded border px-3 py-1 text-xs"
+                  className={ui.buttonSmall}
                 >
                   Actualizar
                 </button>
@@ -1199,13 +1199,13 @@ export default function Home() {
           )}
 
           {activeSection === "ranking" && (
-            <div className="mb-6 rounded border p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="font-bold">Ranking</h2>
+            <div className={ui.card}>
+              <div className={ui.sectionHeader}>
+                <h2 className={ui.sectionTitle}>Ranking</h2>
 
                 <button
                   onClick={() => loadRanking()}
-                  className="rounded border px-3 py-1 text-xs"
+                  className={ui.buttonSmall}
                 >
                   Actualizar
                 </button>
@@ -1220,7 +1220,7 @@ export default function Home() {
                   {ranking.map((row, index) => (
                     <div
                       key={row.player_id}
-                      className="rounded border p-3 text-sm"
+                      className={`${ui.innerCard} text-sm`}
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-semibold">
@@ -1315,16 +1315,16 @@ export default function Home() {
           )}
 
           {activeSection === "resultados" && (
-            <div className="mb-6 rounded border p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="font-bold">Resultados oficiales</h2>
+            <div className={ui.card}>
+              <div className={ui.sectionHeader}>
+                <h2 className={ui.sectionTitle}>Resultados oficiales</h2>
 
                 <button
                   onClick={async () => {
                     const loadedResults = await loadGroupResults();
                     await loadRanking(loadedResults, groups);
                   }}
-                  className="rounded border px-3 py-1 text-xs"
+                  className={ui.buttonSmall}
                 >
                   Actualizar
                 </button>
@@ -1335,7 +1335,7 @@ export default function Home() {
                   const result = groupResults[group.id];
 
                   return (
-                    <div key={group.id} className="rounded border p-3 text-sm">
+                    <div key={group.id} className={`${ui.innerCard} text-sm`}>
                       <div className="mb-2 flex items-center justify-between">
                         <h3 className="font-semibold">{group.name}</h3>
 
@@ -1370,13 +1370,13 @@ export default function Home() {
           )}
 
           {activeSection === "pronosticos" && (
-            <div className="mb-6 rounded border p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="font-bold">Pronósticos enviados</h2>
+            <div className={ui.card}>
+              <div className={ui.sectionHeader}>
+                <h2 className={ui.sectionTitle}>Pronósticos enviados</h2>
 
                 <button
                   onClick={loadSubmittedPredictions}
-                  className="rounded border px-3 py-1 text-xs"
+                  className={ui.buttonSmall}
                 >
                   Actualizar
                 </button>
@@ -1404,7 +1404,7 @@ export default function Home() {
                       return (
                         <div
                           key={submittedPlayer.id}
-                          className="rounded border p-3"
+                          className={ui.innerCard}
                         >
                           <h3 className="mb-2 font-semibold">
                             {submittedPlayer.name}
@@ -1456,7 +1456,7 @@ export default function Home() {
           {activeSection === "miQuiniela" && (
             <div className="space-y-6">
               {groups.map((group) => (
-                <div key={group.id} className="rounded border p-4">
+                <div key={group.id} className={ui.cardPlain}>
                   <h2 className="mb-3 font-bold">{group.name}</h2>
 
                   {(teamsByGroup[group.id] || []).length === 0 && (
@@ -1469,7 +1469,7 @@ export default function Home() {
                     <select
                       key={position}
                       disabled={isSubmitted || !isQuinielaOpen}
-                      className="mb-2 w-full rounded border p-2 disabled:bg-gray-100"
+                      className={ui.smallSelect}
                       value={predictions[group.id]?.[position] || ""}
                       onChange={(e) =>
                         updatePrediction(group.id, position, e.target.value)
@@ -1488,14 +1488,14 @@ export default function Home() {
                   <button
                     disabled={isSubmitted || !isQuinielaOpen}
                     onClick={() => saveGroupPrediction(group.id)}
-                    className="mt-2 w-full rounded bg-green-600 p-2 text-white disabled:bg-gray-400"
+                    className={ui.buttonGreen}
                   >
                     Guardar grupo
                   </button>
                 </div>
               ))}
 
-              <div className="rounded border p-4">
+              <div className={ui.cardPlain}>
                 {isSubmitted ? (
                   <p className="font-semibold text-green-700">
                     Quiniela enviada. Tus picks están bloqueados.
@@ -1504,7 +1504,7 @@ export default function Home() {
                   <button
                     disabled={!isQuinielaOpen}
                     onClick={submitFinalPredictions}
-                    className="w-full rounded bg-black p-3 text-white disabled:bg-gray-400"
+                    className={ui.buttonSubmit}
                   >
                     Enviar quiniela final
                   </button>

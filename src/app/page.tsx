@@ -744,6 +744,20 @@ export default function Home() {
             </p>
           )}
 
+          <div className="mb-6 rounded border bg-gray-50 p-4">
+            <h2 className="mb-2 font-bold">Reglas de puntuación</h2>
+                  
+            <div className="space-y-1 text-sm text-gray-700">
+              <p>+3 pts por cada posición exacta del grupo.</p>
+              <p>
+                +1 pt si aciertas un clasificado al Top 2, pero en posición invertida.
+              </p>
+              <p className="font-semibold text-gray-900">
+                Máximo por grupo: 12 pts.
+              </p>
+            </div>
+          </div>
+
           {isAdmin && (
             <div className="mb-6 rounded border border-yellow-300 bg-yellow-50 p-4">
               <h2 className="mb-3 font-bold">Panel de administrador</h2>

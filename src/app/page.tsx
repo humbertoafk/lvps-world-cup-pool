@@ -11,12 +11,12 @@ import { RankingSection } from "@/components/RankingSection";
 import { ResultsSection } from "@/components/ResultsSection";
 import { SubmittedPredictionsSection } from "@/components/SubmittedPredictionsSection";
 import { RulesCard } from "@/components/RulesCard";
-import { StatusSection } from "@/components/StatusSection";
 import { hasCompleteGroupResult as checkCompleteGroupResult } from "@/utils/results";
 import { getTeamNameFromGroups } from "@/utils/teams";
 import { validatePinCreation } from "@/utils/pin";
 import { validateGroupSelection } from "@/utils/groupValidation";
 import { fetchRankingRows } from "@/services/rankingService";
+import { DashboardSection } from "@/components/DashboardSection";
 import { ui } from "@/styles/ui";
 import type {
   Group,
@@ -657,7 +657,15 @@ export default function Home() {
           )}
 
           {activeSection === "resumen" && (
-            <StatusSection players={players} onRefresh={refreshPlayers} />
+            <DashboardSection
+              players={players}
+              ranking={ranking}
+              groups={groups}
+              groupResults={groupResults}
+              isQuinielaOpen={isQuinielaOpen}
+              onGoToRanking={() => setActiveSection("ranking")}
+              onGoToResults={() => setActiveSection("resultados")}
+            />
           )}
 
           {activeSection === "ranking" && (

@@ -631,11 +631,7 @@ export default function Home() {
         <div className={ui.container}>
           <AppHeader loggedUser={loggedUser} onLogout={logout} />
 
-          <MessagesArea
-            message={message}
-            isSubmitted={isSubmitted}
-            isQuinielaOpen={isQuinielaOpen}
-          />
+          <MessagesArea message={message} />
 
           <RulesCard />
 

@@ -14,10 +14,10 @@ import { ResultsSection } from "@/components/ResultsSection";
 import { RulesCard } from "@/components/RulesCard";
 import { KnockoutAdminPanel } from "@/components/KnockoutAdminPanel";
 import { SubmittedPredictionsSection } from "@/components/SubmittedPredictionsSection";
-import { fetchKnockoutPredictionsByPlayer } from "@/services/knockoutReads";
 import { KnockoutRankingSection } from "@/components/KnockoutRankingSection";
 import { fetchKnockoutRankingRows } from "@/services/knockoutRankingService";
 import { getNextKnockoutRoundId } from "@/utils/knockoutRounds";
+import { KnockoutHistorySection } from "@/components/KnockoutHistorySection";
 import {
   saveKnockoutMatch,
   saveKnockoutPrediction,
@@ -72,7 +72,10 @@ import type {
 } from "@/types/knockout";
 import {
   fetchActiveKnockoutRound,
+  fetchAllKnockoutMatches,
   fetchKnockoutMatchesByRound,
+  fetchKnockoutPredictionsByPlayer,
+  fetchKnockoutRounds,
 } from "@/services/knockoutReads";
 import bcrypt from "bcryptjs";
 
@@ -121,6 +124,11 @@ export default function Home() {
     []
   );
 
+  const [knockoutRounds, setKnockoutRounds] = useState<KnockoutRound[]>([]);
+  const [allKnockoutMatches, setAllKnockoutMatches] = useState<KnockoutMatch[]>(
+    []
+  );
+
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isQuinielaOpen, setIsQuinielaOpen] = useState(true);
@@ -133,6 +141,7 @@ export default function Home() {
     loadAppSettings();
     loadActiveKnockoutData();
     loadKnockoutRanking();
+    loadKnockoutHistory();
 
     Promise.all([loadGroups(), loadGroupResults()]).then(
       ([loadedGroups, loadedResults]) => {
@@ -765,6 +774,7 @@ export default function Home() {
     setKnockoutTeamBId("");
   
     await loadActiveKnockoutData();
+    await loadKnockoutHistory();
   
     setMessage("Partido de eliminatoria guardado correctamente");
   }
@@ -928,6 +938,7 @@ export default function Home() {
 
     await loadActiveKnockoutData();
     await loadKnockoutRanking();
+    await loadKnockoutHistory();
 
     setKnockoutWinnersByMatch((prev) => ({
       ...prev,
@@ -978,6 +989,7 @@ export default function Home() {
     }
 
     await loadActiveKnockoutData();
+    await loadKnockoutHistory();
     setMessage(`${activeKnockoutRound.name} cerrada correctamente`);
   }
 
@@ -1019,6 +1031,7 @@ export default function Home() {
 
     await loadActiveKnockoutData();
     await loadKnockoutRanking();
+    await loadKnockoutHistory();
 
     setMessage(`${activeKnockoutRound.name} completada correctamente`);
   }
@@ -1067,8 +1080,24 @@ export default function Home() {
 
     await loadActiveKnockoutData();
     await loadKnockoutRanking();
+    await loadKnockoutHistory();
 
     setMessage("Siguiente ronda abierta correctamente");
+  }
+
+  async function loadKnockoutHistory() {
+    try {
+      const [loadedRounds, loadedMatches] = await Promise.all([
+        fetchKnockoutRounds(),
+        fetchAllKnockoutMatches(),
+      ]);
+
+      setKnockoutRounds(loadedRounds);
+      setAllKnockoutMatches(loadedMatches);
+    } catch (error) {
+      console.error(error);
+      setMessage("Error al cargar historial de eliminatoria");
+    }
   }
 
   if (loggedUser) {
@@ -1137,11 +1166,19 @@ export default function Home() {
           )}
 
           {activeSection === "historial" && (
-            <PhaseHistorySection
-              onGoToGroupRanking={() => setActiveSection("ranking")}
-              onGoToGroupResults={() => setActiveSection("resultados")}
-              onGoToGroupPicks={() => setActiveSection("picks")}
-            />
+            <div className="space-y-6">
+              <PhaseHistorySection
+                onGoToGroupRanking={() => setActiveSection("ranking")}
+                onGoToGroupResults={() => setActiveSection("resultados")}
+                onGoToGroupPicks={() => setActiveSection("picks")}
+              />
+          
+              <KnockoutHistorySection
+                rounds={knockoutRounds}
+                matches={allKnockoutMatches}
+                getTeamName={getTeamName}
+              />
+            </div>
           )}
 
           {activeSection === "resultados" && (

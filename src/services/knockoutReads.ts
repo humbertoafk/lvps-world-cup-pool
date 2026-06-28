@@ -84,3 +84,17 @@ export async function fetchKnockoutPredictionsByRound(roundId: string) {
 
   return (data || []) as unknown as KnockoutPrediction[];
 }
+
+export async function fetchAllKnockoutMatches() {
+  const { data, error } = await supabase
+    .from("knockout_matches")
+    .select("*")
+    .order("round_id")
+    .order("match_number");
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []) as KnockoutMatch[];
+}

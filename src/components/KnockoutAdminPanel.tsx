@@ -19,6 +19,9 @@ type KnockoutAdminPanelProps = {
   onWinnerChange: (matchId: string, teamId: string) => void;
   onSaveMatch: () => void | Promise<void>;
   onSaveWinner: (matchId: string) => void | Promise<void>;
+  onCloseRound: () => void | Promise<void>;
+  onCompleteRound: () => void | Promise<void>;
+  onOpenNextRound: () => void | Promise<void>;
   onRefresh: () => void | Promise<void>;
   getTeamName: (teamId: string | null | undefined) => string;
 };
@@ -37,6 +40,9 @@ export function KnockoutAdminPanel({
   onWinnerChange,
   onSaveMatch,
   onSaveWinner,
+  onCloseRound,
+  onCompleteRound,
+  onOpenNextRound,
   onRefresh,
   getTeamName,
 }: KnockoutAdminPanelProps) {
@@ -58,6 +64,10 @@ export function KnockoutAdminPanel({
     );
   }
 
+  const allMatchesHaveWinner =
+    matches.length > 0 &&
+    matches.every((match) => match.played && match.winner_team_id);
+
   return (
     <div className={ui.card}>
       <div className={ui.sectionHeader}>
@@ -76,9 +86,53 @@ export function KnockoutAdminPanel({
 
       <div className="mb-4 rounded border border-neutral-800 bg-neutral-950 p-3">
         <p className="text-xs text-neutral-500">Estado</p>
+
         <p className="mt-1 text-sm font-semibold text-green-400">
           {getKnockoutStatusLabel(activeRound.status)}
         </p>
+      </div>
+
+      <div className="mb-6 rounded border border-neutral-800 bg-neutral-950 p-3">
+        <h3 className="mb-2 font-bold">Control de ronda</h3>
+
+        <p className="mb-3 text-sm text-neutral-400">
+          Usa estos controles para cerrar la ronda actual, marcarla como
+          completada y abrir la siguiente.
+        </p>
+
+        <div className="space-y-2">
+          <button
+            onClick={onCloseRound}
+            disabled={activeRound.status !== "open"}
+            className="w-full rounded bg-orange-500 p-2 text-sm font-semibold text-white disabled:bg-neutral-700 disabled:text-neutral-400"
+          >
+            Cerrar ronda
+          </button>
+
+          <button
+            onClick={onCompleteRound}
+            disabled={
+              activeRound.status !== "closed" || !allMatchesHaveWinner
+            }
+            className="w-full rounded bg-green-600 p-2 text-sm font-semibold text-white disabled:bg-neutral-700 disabled:text-neutral-400"
+          >
+            Marcar ronda como completada
+          </button>
+
+          <button
+            onClick={onOpenNextRound}
+            disabled={activeRound.status !== "completed"}
+            className={ui.buttonBlue}
+          >
+            Abrir siguiente ronda
+          </button>
+        </div>
+
+        {!allMatchesHaveWinner && matches.length > 0 && (
+          <p className="mt-3 text-xs text-yellow-400">
+            Para completar la ronda, primero captura todos los ganadores reales.
+          </p>
+        )}
       </div>
 
       <div className="mb-6 space-y-3">

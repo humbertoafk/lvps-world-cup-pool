@@ -26,3 +26,10 @@ export function getKnockoutRoundOrderIndex(roundId: KnockoutRoundId) {
 export function getKnockoutRoundPoints(roundId: KnockoutRoundId) {
   return KNOCKOUT_ROUND_POINTS[roundId] || 0;
 }
+
+export function getNextKnockoutRoundId(roundId: KnockoutRoundId) {
+  const currentIndex = getKnockoutRoundOrderIndex(roundId);
+  const nextRoundId = KNOCKOUT_ROUND_ORDER[currentIndex + 1];
+
+  return nextRoundId || null;
+}

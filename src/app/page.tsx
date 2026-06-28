@@ -17,10 +17,12 @@ import { SubmittedPredictionsSection } from "@/components/SubmittedPredictionsSe
 import { fetchKnockoutPredictionsByPlayer } from "@/services/knockoutReads";
 import { KnockoutRankingSection } from "@/components/KnockoutRankingSection";
 import { fetchKnockoutRankingRows } from "@/services/knockoutRankingService";
+import { getNextKnockoutRoundId } from "@/utils/knockoutRounds";
 import {
   saveKnockoutMatch,
   saveKnockoutPrediction,
   saveKnockoutWinner,
+  updateKnockoutRoundStatus,
 } from "@/services/knockoutWrites";
 import {
   fetchGroupResults,
@@ -945,6 +947,130 @@ export default function Home() {
     }
   }
 
+  async function handleCloseKnockoutRound() {
+    if (!isAdmin) {
+      setMessage("No tienes permisos de administrador");
+      return;
+    }
+
+    if (!activeKnockoutRound) {
+      setMessage("No hay ronda activa");
+      return;
+    }
+
+    if (activeKnockoutMatches.length === 0) {
+      setMessage("No puedes cerrar una ronda sin partidos cargados");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `¿Seguro que quieres cerrar ${activeKnockoutRound.name}? Los jugadores ya no podrán enviar ni modificar picks.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await updateKnockoutRoundStatus(activeKnockoutRound.id, "closed");
+    } catch (error) {
+      console.error(error);
+      setMessage("Error al cerrar la ronda");
+      return;
+    }
+
+    await loadActiveKnockoutData();
+    setMessage(`${activeKnockoutRound.name} cerrada correctamente`);
+  }
+
+  async function handleCompleteKnockoutRound() {
+    if (!isAdmin) {
+      setMessage("No tienes permisos de administrador");
+      return;
+    }
+
+    if (!activeKnockoutRound) {
+      setMessage("No hay ronda activa");
+      return;
+    }
+
+    const missingWinner = activeKnockoutMatches.find(
+      (match) => !match.played || !match.winner_team_id
+    );
+
+    if (missingWinner) {
+      setMessage(
+        `Falta capturar ganador del partido ${missingWinner.match_number}`
+      );
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `¿Seguro que quieres marcar ${activeKnockoutRound.name} como completada?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await updateKnockoutRoundStatus(activeKnockoutRound.id, "completed");
+    } catch (error) {
+      console.error(error);
+      setMessage("Error al completar la ronda");
+      return;
+    }
+
+    await loadActiveKnockoutData();
+    await loadKnockoutRanking();
+
+    setMessage(`${activeKnockoutRound.name} completada correctamente`);
+  }
+
+  async function handleOpenNextKnockoutRound() {
+    if (!isAdmin) {
+      setMessage("No tienes permisos de administrador");
+      return;
+    }
+
+    if (!activeKnockoutRound) {
+      setMessage("No hay ronda activa");
+      return;
+    }
+
+    if (activeKnockoutRound.status !== "completed") {
+      setMessage("Primero debes completar la ronda actual");
+      return;
+    }
+
+    const nextRoundId = getNextKnockoutRoundId(activeKnockoutRound.id);
+
+    if (!nextRoundId) {
+      setMessage("No hay siguiente ronda. La eliminatoria ya terminó.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `¿Seguro que quieres abrir la siguiente ronda?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await updateKnockoutRoundStatus(activeKnockoutRound.id, "archived");
+      await updateKnockoutRoundStatus(nextRoundId, "open");
+    } catch (error) {
+      console.error(error);
+      setMessage("Error al abrir la siguiente ronda");
+      return;
+    }
+
+    setKnockoutPredictions({});
+    setHasSubmittedKnockoutRound(false);
+    setKnockoutWinnersByMatch({});
+
+    await loadActiveKnockoutData();
+    await loadKnockoutRanking();
+
+    setMessage("Siguiente ronda abierta correctamente");
+  }
+
   if (loggedUser) {
     return (
       <main className={ui.page}>
@@ -1057,10 +1183,13 @@ export default function Home() {
                 onWinnerChange={updateKnockoutWinner}
                 onSaveMatch={handleSaveKnockoutMatch}
                 onSaveWinner={handleSaveKnockoutWinner}
+                onCloseRound={handleCloseKnockoutRound}
+                onCompleteRound={handleCompleteKnockoutRound}
+                onOpenNextRound={handleOpenNextKnockoutRound}
                 onRefresh={loadActiveKnockoutData}
                 getTeamName={getTeamName}
               />
-                        
+
               <AdminPanel
                 players={players}
                 groups={groups}

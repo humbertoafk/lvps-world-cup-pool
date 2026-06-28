@@ -22,7 +22,7 @@ export async function fetchActiveKnockoutRound() {
   const { data, error } = await supabase
     .from("knockout_rounds")
     .select("*")
-    .eq("status", "open")
+    .in("status", ["open", "closed", "completed"])
     .order("sort_order")
     .limit(1)
     .maybeSingle();

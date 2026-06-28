@@ -987,7 +987,7 @@ export default function Home() {
                 onRefresh={() => loadRanking()}
                 getTeamName={getTeamName}
               />
-          
+
               <KnockoutRankingSection
                 ranking={knockoutRanking}
                 onRefresh={loadKnockoutRanking}
@@ -1043,21 +1043,6 @@ export default function Home() {
 
           {isAdmin && activeSection === "admin" && (
             <div className="space-y-6">
-              <AdminPanel
-                players={players}
-                groups={groups}
-                teamsByGroup={teamsByGroup}
-                groupResults={groupResults}
-                isQuinielaOpen={isQuinielaOpen}
-                adminSelectedPlayerId={adminSelectedPlayerId}
-                onAdminSelectedPlayerChange={setAdminSelectedPlayerId}
-                onToggleQuinielaOpen={toggleQuinielaOpen}
-                onUnlockPlayerSubmission={unlockPlayerSubmission}
-                onRefreshRanking={() => loadRanking()}
-                onUpdateGroupResult={updateGroupResult}
-                onSaveGroupResult={saveGroupResult}
-              />
-
               <KnockoutAdminPanel
                 activeRound={activeKnockoutRound}
                 matches={activeKnockoutMatches}
@@ -1074,6 +1059,21 @@ export default function Home() {
                 onSaveWinner={handleSaveKnockoutWinner}
                 onRefresh={loadActiveKnockoutData}
                 getTeamName={getTeamName}
+              />
+                        
+              <AdminPanel
+                players={players}
+                groups={groups}
+                teamsByGroup={teamsByGroup}
+                groupResults={groupResults}
+                isQuinielaOpen={isQuinielaOpen}
+                adminSelectedPlayerId={adminSelectedPlayerId}
+                onAdminSelectedPlayerChange={setAdminSelectedPlayerId}
+                onToggleQuinielaOpen={toggleQuinielaOpen}
+                onUnlockPlayerSubmission={unlockPlayerSubmission}
+                onRefreshRanking={() => loadRanking()}
+                onUpdateGroupResult={updateGroupResult}
+                onSaveGroupResult={saveGroupResult}
               />
             </div>
           )}

@@ -23,6 +23,7 @@ import {
   saveKnockoutMatch,
   saveKnockoutPrediction,
   saveKnockoutWinner,
+  unlockKnockoutPredictionsByPlayerAndRound,
   updateKnockoutRoundStatus,
 } from "@/services/knockoutWrites";
 import {
@@ -141,6 +142,9 @@ export default function Home() {
   const [isQuinielaOpen, setIsQuinielaOpen] = useState(true);
   const [adminSelectedPlayerId, setAdminSelectedPlayerId] = useState("");
   const [activeSection, setActiveSection] = useState<SectionId>("inicio");
+
+  const [knockoutUnlockPlayerId, setKnockoutUnlockPlayerId] = useState("");
+  const [knockoutUnlockRoundId, setKnockoutUnlockRoundId] = useState("");
 
   useEffect(() => {
     loadPlayers();
@@ -1119,6 +1123,68 @@ export default function Home() {
     }
   }
 
+  async function handleUnlockKnockoutPlayerRound() {
+    if (!isAdmin) {
+      setMessage("No tienes permisos de administrador");
+      return;
+    }
+
+    if (!knockoutUnlockPlayerId) {
+      setMessage("Selecciona un jugador");
+      return;
+    }
+
+    if (!knockoutUnlockRoundId) {
+      setMessage("Selecciona una ronda");
+      return;
+    }
+
+    const selectedPlayer = players.find(
+      (player) => player.id === knockoutUnlockPlayerId
+    );
+
+    const selectedRound = knockoutRounds.find(
+      (round) => round.id === knockoutUnlockRoundId
+    );
+
+    const confirmed = window.confirm(
+      `¿Seguro que quieres desbloquear los picks de ${
+        selectedPlayer?.name || "este jugador"
+      } en ${selectedRound?.name || "esta ronda"}?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await unlockKnockoutPredictionsByPlayerAndRound(
+        knockoutUnlockPlayerId,
+        knockoutUnlockRoundId
+      );
+    } catch (error) {
+      console.error(error);
+      setMessage("Error al desbloquear picks de eliminatoria");
+      return;
+    }
+
+    if (
+      loggedPlayerId === knockoutUnlockPlayerId &&
+      activeKnockoutRound?.id === knockoutUnlockRoundId
+    ) {
+      setHasSubmittedKnockoutRound(false);
+      await loadActiveKnockoutData(loggedPlayerId);
+    }
+
+    await loadAllKnockoutPredictions();
+    await loadKnockoutRanking();
+
+    setKnockoutUnlockPlayerId("");
+    setKnockoutUnlockRoundId("");
+
+    setMessage("Picks de eliminatoria desbloqueados correctamente");
+  }
+
   if (loggedUser) {
     return (
       <main className={ui.page}>
@@ -1219,15 +1285,15 @@ export default function Home() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
                   Pronósticos enviados
                 </p>
-                    
+
                 <h2 className="mt-1 text-2xl font-bold">Picks</h2>
-                    
+
                 <p className="mt-2 text-sm text-neutral-400">
                   La fase de grupos y la eliminatoria están separadas. Todas las listas
                   aparecen contraídas por defecto.
                 </p>
               </div>
-                    
+
               <SubmittedPredictionsSection
                 isSubmitted={isSubmitted}
                 players={players}
@@ -1235,7 +1301,7 @@ export default function Home() {
                 onRefresh={loadSubmittedPredictions}
                 getTeamName={getTeamName}
               />
-          
+
               <KnockoutSubmittedPredictionsSection
                 rounds={knockoutRounds}
                 matches={allKnockoutMatches}
@@ -1251,21 +1317,28 @@ export default function Home() {
             <div className="space-y-6">
               <KnockoutAdminPanel
                 activeRound={activeKnockoutRound}
+                rounds={knockoutRounds}
                 matches={activeKnockoutMatches}
+                players={players}
                 teamsByGroup={teamsByGroup}
                 matchNumber={knockoutMatchNumber}
                 teamAId={knockoutTeamAId}
                 teamBId={knockoutTeamBId}
                 winnersByMatch={knockoutWinnersByMatch}
+                unlockPlayerId={knockoutUnlockPlayerId}
+                unlockRoundId={knockoutUnlockRoundId}
                 onMatchNumberChange={setKnockoutMatchNumber}
                 onTeamAChange={setKnockoutTeamAId}
                 onTeamBChange={setKnockoutTeamBId}
                 onWinnerChange={updateKnockoutWinner}
+                onUnlockPlayerChange={setKnockoutUnlockPlayerId}
+                onUnlockRoundChange={setKnockoutUnlockRoundId}
                 onSaveMatch={handleSaveKnockoutMatch}
                 onSaveWinner={handleSaveKnockoutWinner}
                 onCloseRound={handleCloseKnockoutRound}
                 onCompleteRound={handleCompleteKnockoutRound}
                 onOpenNextRound={handleOpenNextKnockoutRound}
+                onUnlockPlayerRound={handleUnlockKnockoutPlayerRound}
                 onRefresh={loadActiveKnockoutData}
                 getTeamName={getTeamName}
               />

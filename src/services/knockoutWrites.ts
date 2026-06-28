@@ -110,3 +110,36 @@ export async function updateKnockoutRoundStatus(
     throw error;
   }
 }
+
+export async function unlockKnockoutPredictionsByPlayerAndRound(
+  playerId: string,
+  roundId: string
+) {
+  const { data: matches, error: matchesError } = await supabase
+    .from("knockout_matches")
+    .select("id")
+    .eq("round_id", roundId);
+
+  if (matchesError) {
+    throw matchesError;
+  }
+
+  const matchIds = (matches || []).map((match) => match.id);
+
+  if (matchIds.length === 0) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from("knockout_predictions")
+    .update({
+      submitted: false,
+      submitted_at: null,
+    })
+    .eq("player_id", playerId)
+    .in("match_id", matchIds);
+
+  if (error) {
+    throw error;
+  }
+}

@@ -2,47 +2,61 @@
 
 import { ui } from "@/styles/ui";
 import type { KnockoutMatch, KnockoutRound } from "@/types/knockout";
-import type { Team } from "@/types/quiniela";
+import type { Player, Team } from "@/types/quiniela";
 import { getKnockoutStatusLabel } from "@/utils/knockoutStatus";
 
 type KnockoutAdminPanelProps = {
   activeRound: KnockoutRound | null;
+  rounds: KnockoutRound[];
   matches: KnockoutMatch[];
+  players: Player[];
   teamsByGroup: Record<string, Team[]>;
   matchNumber: string;
   teamAId: string;
   teamBId: string;
   winnersByMatch: Record<string, string>;
+  unlockPlayerId: string;
+  unlockRoundId: string;
   onMatchNumberChange: (value: string) => void;
   onTeamAChange: (value: string) => void;
   onTeamBChange: (value: string) => void;
   onWinnerChange: (matchId: string, teamId: string) => void;
+  onUnlockPlayerChange: (playerId: string) => void;
+  onUnlockRoundChange: (roundId: string) => void;
   onSaveMatch: () => void | Promise<void>;
   onSaveWinner: (matchId: string) => void | Promise<void>;
   onCloseRound: () => void | Promise<void>;
   onCompleteRound: () => void | Promise<void>;
   onOpenNextRound: () => void | Promise<void>;
+  onUnlockPlayerRound: () => void | Promise<void>;
   onRefresh: () => void | Promise<void>;
   getTeamName: (teamId: string | null | undefined) => string;
 };
 
 export function KnockoutAdminPanel({
   activeRound,
+  rounds,
   matches,
+  players,
   teamsByGroup,
   matchNumber,
   teamAId,
   teamBId,
   winnersByMatch,
+  unlockPlayerId,
+  unlockRoundId,
   onMatchNumberChange,
   onTeamAChange,
   onTeamBChange,
   onWinnerChange,
+  onUnlockPlayerChange,
+  onUnlockRoundChange,
   onSaveMatch,
   onSaveWinner,
   onCloseRound,
   onCompleteRound,
   onOpenNextRound,
+  onUnlockPlayerRound,
   onRefresh,
   getTeamName,
 }: KnockoutAdminPanelProps) {
@@ -75,7 +89,7 @@ export function KnockoutAdminPanel({
           <h2 className={ui.sectionTitle}>Eliminatoria</h2>
 
           <p className={ui.mutedTextSmall}>
-            Ronda activa: {activeRound.name}
+            Ronda actual: {activeRound.name}
           </p>
         </div>
 
@@ -111,9 +125,7 @@ export function KnockoutAdminPanel({
 
           <button
             onClick={onCompleteRound}
-            disabled={
-              activeRound.status !== "closed" || !allMatchesHaveWinner
-            }
+            disabled={activeRound.status !== "closed" || !allMatchesHaveWinner}
             className="w-full rounded bg-green-600 p-2 text-sm font-semibold text-white disabled:bg-neutral-700 disabled:text-neutral-400"
           >
             Marcar ronda como completada
@@ -128,11 +140,66 @@ export function KnockoutAdminPanel({
           </button>
         </div>
 
+        {matches.length === 0 && (
+          <p className="mt-3 text-xs text-yellow-400">
+            Para cerrar la ronda, primero carga al menos un partido.
+          </p>
+        )}
+
         {!allMatchesHaveWinner && matches.length > 0 && (
           <p className="mt-3 text-xs text-yellow-400">
             Para completar la ronda, primero captura todos los ganadores reales.
           </p>
         )}
+      </div>
+
+      <div className="mb-6 rounded border border-neutral-800 bg-neutral-950 p-3">
+        <h3 className="mb-2 font-bold">Desbloquear picks de eliminatoria</h3>
+
+        <p className="mb-3 text-sm text-neutral-400">
+          Usa esta opción si un jugador necesita corregir sus picks de una ronda
+          de eliminatoria.
+        </p>
+
+        <div className="space-y-3">
+          <select
+            value={unlockPlayerId}
+            onChange={(event) => onUnlockPlayerChange(event.target.value)}
+            className={ui.select}
+          >
+            <option value="">Selecciona jugador</option>
+
+            {players.map((player) => (
+              <option key={player.id} value={player.id}>
+                {player.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={unlockRoundId}
+            onChange={(event) => onUnlockRoundChange(event.target.value)}
+            className={ui.select}
+          >
+            <option value="">Selecciona ronda</option>
+
+            {rounds.map((round) => (
+              <option key={round.id} value={round.id}>
+                {round.name} — {getKnockoutStatusLabel(round.status)}
+              </option>
+            ))}
+          </select>
+
+          <button onClick={onUnlockPlayerRound} className={ui.buttonOrange}>
+            Desbloquear picks de ronda
+          </button>
+        </div>
+
+        <p className="mt-3 text-xs text-neutral-500">
+          Si la ronda está cerrada, el jugador seguirá sin poder editar aunque
+          sus picks estén desbloqueados. Para editar, la ronda debe estar
+          abierta.
+        </p>
       </div>
 
       <div className="mb-6 space-y-3">

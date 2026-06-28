@@ -13,10 +13,13 @@ import { RankingSection } from "@/components/RankingSection";
 import { ResultsSection } from "@/components/ResultsSection";
 import { RulesCard } from "@/components/RulesCard";
 import { KnockoutAdminPanel } from "@/components/KnockoutAdminPanel";
-import { saveKnockoutMatch } from "@/services/knockoutWrites";
 import { SubmittedPredictionsSection } from "@/components/SubmittedPredictionsSection";
 import { fetchKnockoutPredictionsByPlayer } from "@/services/knockoutReads";
-import { saveKnockoutPrediction } from "@/services/knockoutWrites";
+import {
+  saveKnockoutMatch,
+  saveKnockoutPrediction,
+  saveKnockoutWinner,
+} from "@/services/knockoutWrites";
 import {
   fetchGroupResults,
   fetchGroups,
@@ -99,6 +102,9 @@ export default function Home() {
   const [knockoutMatchNumber, setKnockoutMatchNumber] = useState("");
   const [knockoutTeamAId, setKnockoutTeamAId] = useState("");
   const [knockoutTeamBId, setKnockoutTeamBId] = useState("");
+  const [knockoutWinnersByMatch, setKnockoutWinnersByMatch] = useState<
+    Record<string, string>
+  >({});
 
   const [knockoutPredictions, setKnockoutPredictions] =
     useState<KnockoutPredictionMap>({});
@@ -870,6 +876,56 @@ export default function Home() {
     setMessage(`${activeKnockoutRound.name} enviada correctamente`);
   }
 
+  function updateKnockoutWinner(matchId: string, teamId: string) {
+    setKnockoutWinnersByMatch((prev) => ({
+      ...prev,
+      [matchId]: teamId,
+    }));
+  }
+
+  async function handleSaveKnockoutWinner(matchId: string) {
+    if (!isAdmin) {
+      setMessage("No tienes permisos de administrador");
+      return;
+    }
+
+    const match = activeKnockoutMatches.find((item) => item.id === matchId);
+
+    if (!match) {
+      setMessage("No se encontró el partido");
+      return;
+    }
+
+    const winnerTeamId = knockoutWinnersByMatch[matchId] || match.winner_team_id;
+
+    if (!winnerTeamId) {
+      setMessage("Selecciona el ganador real del partido");
+      return;
+    }
+
+    if (winnerTeamId !== match.team_a_id && winnerTeamId !== match.team_b_id) {
+      setMessage("El ganador debe ser uno de los dos equipos del partido");
+      return;
+    }
+
+    try {
+      await saveKnockoutWinner(matchId, winnerTeamId);
+    } catch (error) {
+      console.error(error);
+      setMessage("Error al guardar ganador de eliminatoria");
+      return;
+    }
+
+    await loadActiveKnockoutData();
+
+    setKnockoutWinnersByMatch((prev) => ({
+      ...prev,
+      [matchId]: winnerTeamId,
+    }));
+
+    setMessage("Ganador de eliminatoria guardado correctamente");
+  }
+
   if (loggedUser) {
     return (
       <main className={ui.page}>
@@ -970,10 +1026,13 @@ export default function Home() {
                 matchNumber={knockoutMatchNumber}
                 teamAId={knockoutTeamAId}
                 teamBId={knockoutTeamBId}
+                winnersByMatch={knockoutWinnersByMatch}
                 onMatchNumberChange={setKnockoutMatchNumber}
                 onTeamAChange={setKnockoutTeamAId}
                 onTeamBChange={setKnockoutTeamBId}
+                onWinnerChange={updateKnockoutWinner}
                 onSaveMatch={handleSaveKnockoutMatch}
+                onSaveWinner={handleSaveKnockoutWinner}
                 onRefresh={loadActiveKnockoutData}
                 getTeamName={getTeamName}
               />

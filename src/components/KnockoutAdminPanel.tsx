@@ -12,10 +12,13 @@ type KnockoutAdminPanelProps = {
   matchNumber: string;
   teamAId: string;
   teamBId: string;
+  winnersByMatch: Record<string, string>;
   onMatchNumberChange: (value: string) => void;
   onTeamAChange: (value: string) => void;
   onTeamBChange: (value: string) => void;
+  onWinnerChange: (matchId: string, teamId: string) => void;
   onSaveMatch: () => void | Promise<void>;
+  onSaveWinner: (matchId: string) => void | Promise<void>;
   onRefresh: () => void | Promise<void>;
   getTeamName: (teamId: string | null | undefined) => string;
 };
@@ -27,10 +30,13 @@ export function KnockoutAdminPanel({
   matchNumber,
   teamAId,
   teamBId,
+  winnersByMatch,
   onMatchNumberChange,
   onTeamAChange,
   onTeamBChange,
+  onWinnerChange,
   onSaveMatch,
+  onSaveWinner,
   onRefresh,
   getTeamName,
 }: KnockoutAdminPanelProps) {
@@ -130,25 +136,61 @@ export function KnockoutAdminPanel({
             Todavía no hay partidos cargados para esta ronda.
           </p>
         ) : (
-          <div className="space-y-2">
-            {matches.map((match) => (
-              <div key={match.id} className={ui.innerCard}>
-                <p className="text-xs text-neutral-500">
-                  Partido {match.match_number}
-                </p>
+          <div className="space-y-3">
+            {matches.map((match) => {
+              const selectedWinner =
+                winnersByMatch[match.id] || match.winner_team_id || "";
 
-                <p className="mt-1 text-sm font-semibold">
-                  {getTeamName(match.team_a_id)} vs{" "}
-                  {getTeamName(match.team_b_id)}
-                </p>
-
-                {match.played && (
-                  <p className="mt-2 text-xs text-green-400">
-                    Ganador: {getTeamName(match.winner_team_id)}
+              return (
+                <div key={match.id} className={ui.innerCard}>
+                  <p className="text-xs text-neutral-500">
+                    Partido {match.match_number}
                   </p>
-                )}
-              </div>
-            ))}
+
+                  <p className="mt-1 text-sm font-semibold">
+                    {getTeamName(match.team_a_id)} vs{" "}
+                    {getTeamName(match.team_b_id)}
+                  </p>
+
+                  {match.played && (
+                    <p className="mt-2 text-xs text-green-400">
+                      Ganador guardado: {getTeamName(match.winner_team_id)}
+                    </p>
+                  )}
+
+                  <div className="mt-3 space-y-2">
+                    <select
+                      value={selectedWinner}
+                      onChange={(event) =>
+                        onWinnerChange(match.id, event.target.value)
+                      }
+                      className={ui.select}
+                    >
+                      <option value="">Selecciona ganador real</option>
+
+                      {match.team_a_id && (
+                        <option value={match.team_a_id}>
+                          {getTeamName(match.team_a_id)}
+                        </option>
+                      )}
+
+                      {match.team_b_id && (
+                        <option value={match.team_b_id}>
+                          {getTeamName(match.team_b_id)}
+                        </option>
+                      )}
+                    </select>
+
+                    <button
+                      onClick={() => onSaveWinner(match.id)}
+                      className={ui.buttonGreen}
+                    >
+                      Guardar ganador
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

@@ -10,30 +10,12 @@ type BottomNavigationProps = {
 };
 
 const NAV_ITEMS: { id: SectionId; label: string }[] = [
-  {
-    id: "resumen",
-    label: "Resumen",
-  },
-  {
-    id: "ranking",
-    label: "Ranking",
-  },
-  {
-    id: "resultados",
-    label: "Resultados",
-  },
-  {
-    id: "pronosticos",
-    label: "Picks",
-  },
-  {
-    id: "miQuiniela",
-    label: "Quiniela",
-  },
-  {
-    id: "admin",
-    label: "Admin",
-  },
+  { id: "inicio", label: "Inicio" },
+  { id: "ranking", label: "Ranking" },
+  { id: "actual", label: "Actual" },
+  { id: "historial", label: "Historial" },
+  { id: "picks", label: "Picks" },
+  { id: "admin", label: "Admin" },
 ];
 
 export function BottomNavigation({

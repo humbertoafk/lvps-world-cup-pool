@@ -1,7 +1,8 @@
 export type SectionId =
-  | "resumen"
+  | "inicio"
   | "ranking"
+  | "actual"
+  | "historial"
   | "resultados"
-  | "pronosticos"
-  | "miQuiniela"
+  | "picks"
   | "admin";

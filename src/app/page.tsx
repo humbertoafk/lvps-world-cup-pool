@@ -4,35 +4,15 @@ import { useEffect, useState } from "react";
 import { AdminPanel } from "@/components/AdminPanel";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNavigation } from "@/components/BottomNavigation";
+import { CurrentPhaseSection } from "@/components/CurrentPhaseSection";
+import { DashboardSection } from "@/components/DashboardSection";
 import { LoginCard } from "@/components/LoginCard";
 import { MessagesArea } from "@/components/MessagesArea";
-import { MyQuinielaSection } from "@/components/MyQuinielaSection";
+import { PhaseHistorySection } from "@/components/PhaseHistorySection";
 import { RankingSection } from "@/components/RankingSection";
 import { ResultsSection } from "@/components/ResultsSection";
-import { SubmittedPredictionsSection } from "@/components/SubmittedPredictionsSection";
 import { RulesCard } from "@/components/RulesCard";
-import { hasCompleteGroupResult as checkCompleteGroupResult } from "@/utils/results";
-import { getTeamNameFromGroups } from "@/utils/teams";
-import { validatePinCreation } from "@/utils/pin";
-import { validateGroupSelection } from "@/utils/groupValidation";
-import { fetchRankingRows } from "@/services/rankingService";
-import { DashboardSection } from "@/components/DashboardSection";
-import { ui } from "@/styles/ui";
-import type {
-  Group,
-  GroupResults,
-  Player,
-  Predictions,
-  RankingRow,
-  SubmittedPredictionRow,
-  Team,
-} from "@/types/quiniela";
-import {
-  clearSession,
-  getSavedSession,
-  saveIsAdmin,
-  saveSession,
-} from "@/utils/session";
+import { SubmittedPredictionsSection } from "@/components/SubmittedPredictionsSection";
 import {
   fetchGroupResults,
   fetchGroups,
@@ -51,7 +31,28 @@ import {
   updatePlayerPinHash,
   updateQuinielaOpenValue,
 } from "@/services/quinielaWrites";
+import { fetchRankingRows } from "@/services/rankingService";
+import { ui } from "@/styles/ui";
+import type {
+  Group,
+  GroupResults,
+  Player,
+  Predictions,
+  RankingRow,
+  SubmittedPredictionRow,
+  Team,
+} from "@/types/quiniela";
 import type { SectionId } from "@/types/sections";
+import { validateGroupSelection } from "@/utils/groupValidation";
+import { validatePinCreation } from "@/utils/pin";
+import { hasCompleteGroupResult as checkCompleteGroupResult } from "@/utils/results";
+import {
+  clearSession,
+  getSavedSession,
+  saveIsAdmin,
+  saveSession,
+} from "@/utils/session";
+import { getTeamNameFromGroups } from "@/utils/teams";
 import bcrypt from "bcryptjs";
 
 export default function Home() {
@@ -79,7 +80,7 @@ export default function Home() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isQuinielaOpen, setIsQuinielaOpen] = useState(true);
   const [adminSelectedPlayerId, setAdminSelectedPlayerId] = useState("");
-  const [activeSection, setActiveSection] = useState<SectionId>("resumen");
+  const [activeSection, setActiveSection] = useState<SectionId>("inicio");
 
   useEffect(() => {
     loadPlayers();
@@ -119,10 +120,6 @@ export default function Home() {
       console.error(error);
       setMessage("Error al cargar jugadores");
     }
-  }
-
-  async function refreshPlayers() {
-    await loadPlayers();
   }
 
   async function loadAppSettings() {
@@ -196,6 +193,32 @@ export default function Home() {
     }
   }
 
+  async function loadRanking(
+    resultsOverride?: GroupResults,
+    groupsOverride?: Group[]
+  ) {
+    const resultsToUse = resultsOverride || groupResults;
+    const groupsToUse = groupsOverride || groups;
+
+    try {
+      const rankingRows = await fetchRankingRows(resultsToUse, groupsToUse);
+      setRanking(rankingRows);
+    } catch (error) {
+      console.error(error);
+      setMessage("Error al cargar ranking");
+    }
+  }
+
+  async function loadSubmittedPredictions() {
+    try {
+      const submittedRows = await fetchSubmittedPredictions();
+      setSubmittedPredictions(submittedRows);
+    } catch (error) {
+      console.error(error);
+      setMessage("Error al cargar pronósticos enviados");
+    }
+  }
+
   function updatePrediction(groupId: string, position: number, teamId: string) {
     setPredictions((prev) => ({
       ...prev,
@@ -222,32 +245,6 @@ export default function Home() {
 
   function hasCompleteGroupResult(groupId: string) {
     return checkCompleteGroupResult(groupResults, groupId);
-  }
-
-  async function loadRanking(
-    resultsOverride?: GroupResults,
-    groupsOverride?: Group[]
-  ) {
-    const resultsToUse = resultsOverride || groupResults;
-    const groupsToUse = groupsOverride || groups;
-  
-    try {
-      const rankingRows = await fetchRankingRows(resultsToUse, groupsToUse);
-      setRanking(rankingRows);
-    } catch (error) {
-      console.error(error);
-      setMessage("Error al cargar ranking");
-    }
-  }
-
-  async function loadSubmittedPredictions() {
-    try {
-      const submittedRows = await fetchSubmittedPredictions();
-      setSubmittedPredictions(submittedRows);
-    } catch (error) {
-      console.error(error);
-      setMessage("Error al cargar pronósticos enviados");
-    }
   }
 
   async function createPin() {
@@ -306,7 +303,7 @@ export default function Home() {
     setLoggedPlayerId(player.id);
     setIsSubmitted(player.submitted);
     setIsAdmin(player.is_admin);
-    setActiveSection("resumen");
+    setActiveSection("inicio");
 
     await loadSavedPredictions(player.id);
 
@@ -332,7 +329,7 @@ export default function Home() {
     setSubmittedPredictions([]);
     setIsSubmitted(false);
     setIsAdmin(false);
-    setActiveSection("resumen");
+    setActiveSection("inicio");
   }
 
   async function saveGroupPrediction(groupId: string) {
@@ -635,24 +632,7 @@ export default function Home() {
 
           <RulesCard />
 
-          {isAdmin && activeSection === "admin" && (
-            <AdminPanel
-              players={players}
-              groups={groups}
-              teamsByGroup={teamsByGroup}
-              groupResults={groupResults}
-              isQuinielaOpen={isQuinielaOpen}
-              adminSelectedPlayerId={adminSelectedPlayerId}
-              onAdminSelectedPlayerChange={setAdminSelectedPlayerId}
-              onToggleQuinielaOpen={toggleQuinielaOpen}
-              onUnlockPlayerSubmission={unlockPlayerSubmission}
-              onRefreshRanking={() => loadRanking()}
-              onUpdateGroupResult={updateGroupResult}
-              onSaveGroupResult={saveGroupResult}
-            />
-          )}
-
-          {activeSection === "resumen" && (
+          {activeSection === "inicio" && (
             <DashboardSection
               players={players}
               ranking={ranking}
@@ -660,7 +640,7 @@ export default function Home() {
               groupResults={groupResults}
               isQuinielaOpen={isQuinielaOpen}
               onGoToRanking={() => setActiveSection("ranking")}
-              onGoToResults={() => setActiveSection("resultados")}
+              onGoToResults={() => setActiveSection("historial")}
             />
           )}
 
@@ -669,6 +649,20 @@ export default function Home() {
               ranking={ranking}
               onRefresh={() => loadRanking()}
               getTeamName={getTeamName}
+            />
+          )}
+
+          {activeSection === "actual" && (
+            <CurrentPhaseSection
+              onGoToHistory={() => setActiveSection("historial")}
+            />
+          )}
+
+          {activeSection === "historial" && (
+            <PhaseHistorySection
+              onGoToGroupRanking={() => setActiveSection("ranking")}
+              onGoToGroupResults={() => setActiveSection("resultados")}
+              onGoToGroupPicks={() => setActiveSection("picks")}
             />
           )}
 
@@ -685,7 +679,7 @@ export default function Home() {
             />
           )}
 
-          {activeSection === "pronosticos" && (
+          {activeSection === "picks" && (
             <SubmittedPredictionsSection
               isSubmitted={isSubmitted}
               players={players}
@@ -695,16 +689,20 @@ export default function Home() {
             />
           )}
 
-          {activeSection === "miQuiniela" && (
-            <MyQuinielaSection
+          {isAdmin && activeSection === "admin" && (
+            <AdminPanel
+              players={players}
               groups={groups}
               teamsByGroup={teamsByGroup}
-              predictions={predictions}
-              isSubmitted={isSubmitted}
+              groupResults={groupResults}
               isQuinielaOpen={isQuinielaOpen}
-              onUpdatePrediction={updatePrediction}
-              onSaveGroupPrediction={saveGroupPrediction}
-              onSubmitFinalPredictions={submitFinalPredictions}
+              adminSelectedPlayerId={adminSelectedPlayerId}
+              onAdminSelectedPlayerChange={setAdminSelectedPlayerId}
+              onToggleQuinielaOpen={toggleQuinielaOpen}
+              onUnlockPlayerSubmission={unlockPlayerSubmission}
+              onRefreshRanking={() => loadRanking()}
+              onUpdateGroupResult={updateGroupResult}
+              onSaveGroupResult={saveGroupResult}
             />
           )}
         </div>

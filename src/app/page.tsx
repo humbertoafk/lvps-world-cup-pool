@@ -18,6 +18,7 @@ import { KnockoutRankingSection } from "@/components/KnockoutRankingSection";
 import { fetchKnockoutRankingRows } from "@/services/knockoutRankingService";
 import { getNextKnockoutRoundId } from "@/utils/knockoutRounds";
 import { KnockoutHistorySection } from "@/components/KnockoutHistorySection";
+import { KnockoutSubmittedPredictionsSection } from "@/components/KnockoutSubmittedPredictionsSection";
 import {
   saveKnockoutMatch,
   saveKnockoutPrediction,
@@ -66,6 +67,7 @@ import {
 import { getTeamNameFromGroups } from "@/utils/teams";
 import type {
   KnockoutMatch,
+  KnockoutPrediction,
   KnockoutPredictionMap,
   KnockoutRankingRow,
   KnockoutRound,
@@ -73,6 +75,7 @@ import type {
 import {
   fetchActiveKnockoutRound,
   fetchAllKnockoutMatches,
+  fetchAllKnockoutPredictions,
   fetchKnockoutMatchesByRound,
   fetchKnockoutPredictionsByPlayer,
   fetchKnockoutRounds,
@@ -129,6 +132,10 @@ export default function Home() {
     []
   );
 
+  const [allKnockoutPredictions, setAllKnockoutPredictions] = useState<
+    KnockoutPrediction[]
+  >([]);
+
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isQuinielaOpen, setIsQuinielaOpen] = useState(true);
@@ -142,6 +149,7 @@ export default function Home() {
     loadActiveKnockoutData();
     loadKnockoutRanking();
     loadKnockoutHistory();
+    loadAllKnockoutPredictions();
 
     Promise.all([loadGroups(), loadGroupResults()]).then(
       ([loadedGroups, loadedResults]) => {
@@ -893,6 +901,7 @@ export default function Home() {
     }
 
     setHasSubmittedKnockoutRound(true);
+    await loadAllKnockoutPredictions();
     setMessage(`${activeKnockoutRound.name} enviada correctamente`);
   }
 
@@ -1100,6 +1109,16 @@ export default function Home() {
     }
   }
 
+  async function loadAllKnockoutPredictions() {
+    try {
+      const loadedPredictions = await fetchAllKnockoutPredictions();
+      setAllKnockoutPredictions(loadedPredictions);
+    } catch (error) {
+      console.error(error);
+      setMessage("Error al cargar picks de eliminatoria");
+    }
+  }
+
   if (loggedUser) {
     return (
       <main className={ui.page}>
@@ -1172,7 +1191,7 @@ export default function Home() {
                 onGoToGroupResults={() => setActiveSection("resultados")}
                 onGoToGroupPicks={() => setActiveSection("picks")}
               />
-          
+
               <KnockoutHistorySection
                 rounds={knockoutRounds}
                 matches={allKnockoutMatches}
@@ -1195,13 +1214,37 @@ export default function Home() {
           )}
 
           {activeSection === "picks" && (
-            <SubmittedPredictionsSection
-              isSubmitted={isSubmitted}
-              players={players}
-              submittedPredictions={submittedPredictions}
-              onRefresh={loadSubmittedPredictions}
-              getTeamName={getTeamName}
-            />
+            <div className="space-y-6">
+              <div className={ui.card}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  Pronósticos enviados
+                </p>
+                    
+                <h2 className="mt-1 text-2xl font-bold">Picks</h2>
+                    
+                <p className="mt-2 text-sm text-neutral-400">
+                  La fase de grupos y la eliminatoria están separadas. Todas las listas
+                  aparecen contraídas por defecto.
+                </p>
+              </div>
+                    
+              <SubmittedPredictionsSection
+                isSubmitted={isSubmitted}
+                players={players}
+                submittedPredictions={submittedPredictions}
+                onRefresh={loadSubmittedPredictions}
+                getTeamName={getTeamName}
+              />
+          
+              <KnockoutSubmittedPredictionsSection
+                rounds={knockoutRounds}
+                matches={allKnockoutMatches}
+                players={players}
+                predictions={allKnockoutPredictions}
+                onRefresh={loadAllKnockoutPredictions}
+                getTeamName={getTeamName}
+              />
+            </div>
           )}
 
           {isAdmin && activeSection === "admin" && (

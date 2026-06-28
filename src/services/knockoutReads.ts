@@ -98,3 +98,16 @@ export async function fetchAllKnockoutMatches() {
 
   return (data || []) as KnockoutMatch[];
 }
+
+export async function fetchAllKnockoutPredictions() {
+  const { data, error } = await supabase
+    .from("knockout_predictions")
+    .select("*")
+    .order("submitted_at");
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []) as KnockoutPrediction[];
+}

@@ -19,6 +19,7 @@ export function SubmittedPredictionsSection({
   onRefresh,
   getTeamName,
 }: SubmittedPredictionsSectionProps) {
+  const [isSectionOpen, setIsSectionOpen] = useState(false);
   const [openPlayerIds, setOpenPlayerIds] = useState<Record<string, boolean>>(
     {}
   );
@@ -33,14 +34,28 @@ export function SubmittedPredictionsSection({
   return (
     <div className={ui.card}>
       <div className={ui.sectionHeader}>
-        <h2 className={ui.sectionTitle}>Pronósticos enviados</h2>
+        <div>
+          <h2 className={ui.sectionTitle}>Fase de grupos</h2>
 
-        <button onClick={onRefresh} className={ui.buttonSmall}>
-          Actualizar
+          <p className={ui.mutedTextSmall}>
+            Pronósticos enviados de la primera quiniela.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsSectionOpen((prev) => !prev)}
+          className={ui.buttonSmall}
+        >
+          {isSectionOpen ? "Ocultar" : "Abrir"}
         </button>
       </div>
 
-      {!isSubmitted ? (
+      {!isSectionOpen ? (
+        <p className={ui.mutedTextSmall}>
+          Sección contraída. Abre para ver los picks de grupos.
+        </p>
+      ) : !isSubmitted ? (
         <p className={ui.mutedTextSmall}>
           Envía tu quiniela final para poder ver los pronósticos enviados.
         </p>
@@ -50,6 +65,10 @@ export function SubmittedPredictionsSection({
         </p>
       ) : (
         <div className="space-y-3">
+          <button onClick={onRefresh} className={ui.buttonSmall}>
+            Actualizar
+          </button>
+
           {players
             .filter((player) => player.submitted)
             .map((submittedPlayer) => {
@@ -87,7 +106,9 @@ export function SubmittedPredictionsSection({
                           key={prediction.group_id}
                           className="rounded border border-neutral-800 bg-neutral-950 p-3 text-sm"
                         >
-                          <p className="font-medium">{prediction.group_name}</p>
+                          <p className="font-medium">
+                            {prediction.group_name}
+                          </p>
 
                           <div className="mt-2 space-y-1 text-xs text-neutral-400">
                             <p>1. {getTeamName(prediction.first_team_id)}</p>

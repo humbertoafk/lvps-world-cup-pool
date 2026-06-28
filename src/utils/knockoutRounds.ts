@@ -10,12 +10,12 @@ export const KNOCKOUT_ROUND_ORDER: KnockoutRoundId[] = [
 ];
 
 export const KNOCKOUT_ROUND_POINTS: Record<KnockoutRoundId, number> = {
-  round_of_32: 2,
-  round_of_16: 3,
+  round_of_32: 5,
+  round_of_16: 5,
   quarterfinals: 5,
-  semifinals: 7,
+  semifinals: 5,
   third_place: 5,
-  final: 10,
+  final: 5,
 };
 
 export function getKnockoutRoundOrderIndex(roundId: KnockoutRoundId) {

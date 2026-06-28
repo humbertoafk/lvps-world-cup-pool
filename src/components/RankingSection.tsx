@@ -29,7 +29,6 @@ export function RankingSection({
 
   return (
     <div className="space-y-4">
-      <RankingPodium ranking={ranking} />
 
       <div className={ui.card}>
         <div className={ui.sectionHeader}>

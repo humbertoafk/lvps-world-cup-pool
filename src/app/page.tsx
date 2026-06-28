@@ -1201,9 +1201,11 @@ export default function Home() {
               ranking={ranking}
               groups={groups}
               groupResults={groupResults}
-              isQuinielaOpen={isQuinielaOpen}
+              activeKnockoutRound={activeKnockoutRound}
+              activeKnockoutMatches={activeKnockoutMatches}
+              knockoutRanking={knockoutRanking}
               onGoToRanking={() => setActiveSection("ranking")}
-              onGoToResults={() => setActiveSection("historial")}
+              onGoToHistory={() => setActiveSection("historial")}
             />
           )}
 

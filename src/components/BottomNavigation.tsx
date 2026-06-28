@@ -12,7 +12,7 @@ type BottomNavigationProps = {
 const NAV_ITEMS: { id: SectionId; label: string }[] = [
   { id: "inicio", label: "Inicio" },
   { id: "ranking", label: "Ranking" },
-  { id: "actual", label: "Actual" },
+  { id: "actual", label: "Jugar" },
   { id: "historial", label: "Historial" },
   { id: "picks", label: "Picks" },
   { id: "admin", label: "Admin" },

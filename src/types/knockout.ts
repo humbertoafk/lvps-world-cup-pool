@@ -64,3 +64,5 @@ export type KnockoutRankingRow = {
   total_points: number;
   details: KnockoutRankingDetail[];
 };
+
+export type KnockoutPredictionMap = Record<string, string>;

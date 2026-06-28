@@ -15,6 +15,8 @@ import { RulesCard } from "@/components/RulesCard";
 import { KnockoutAdminPanel } from "@/components/KnockoutAdminPanel";
 import { saveKnockoutMatch } from "@/services/knockoutWrites";
 import { SubmittedPredictionsSection } from "@/components/SubmittedPredictionsSection";
+import { fetchKnockoutPredictionsByPlayer } from "@/services/knockoutReads";
+import { saveKnockoutPrediction } from "@/services/knockoutWrites";
 import {
   fetchGroupResults,
   fetchGroups,
@@ -55,7 +57,11 @@ import {
   saveSession,
 } from "@/utils/session";
 import { getTeamNameFromGroups } from "@/utils/teams";
-import type { KnockoutMatch, KnockoutRound } from "@/types/knockout";
+import type {
+  KnockoutMatch,
+  KnockoutPredictionMap,
+  KnockoutRound,
+} from "@/types/knockout";
 import {
   fetchActiveKnockoutRound,
   fetchKnockoutMatchesByRound,
@@ -94,6 +100,12 @@ export default function Home() {
   const [knockoutTeamAId, setKnockoutTeamAId] = useState("");
   const [knockoutTeamBId, setKnockoutTeamBId] = useState("");
 
+  const [knockoutPredictions, setKnockoutPredictions] =
+    useState<KnockoutPredictionMap>({});
+
+  const [hasSubmittedKnockoutRound, setHasSubmittedKnockoutRound] =
+    useState(false);
+
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isQuinielaOpen, setIsQuinielaOpen] = useState(true);
@@ -122,6 +134,7 @@ export default function Home() {
       setIsAdmin(savedSession.isAdmin);
 
       loadSavedPredictions(savedSession.playerId);
+      loadActiveKnockoutData(savedSession.playerId);
 
       loadPlayerStatus(savedSession.playerId).then((status) => {
         if (status?.submitted) {
@@ -238,7 +251,7 @@ export default function Home() {
     }
   }
 
-  async function loadActiveKnockoutData() {
+  async function loadActiveKnockoutData(playerIdOverride?: string) {
     try {
       const activeRound = await fetchActiveKnockoutRound();
 
@@ -246,11 +259,42 @@ export default function Home() {
 
       if (!activeRound) {
         setActiveKnockoutMatches([]);
+        setKnockoutPredictions({});
+        setHasSubmittedKnockoutRound(false);
         return;
       }
 
       const matches = await fetchKnockoutMatchesByRound(activeRound.id);
       setActiveKnockoutMatches(matches);
+
+      const playerIdToUse = playerIdOverride || loggedPlayerId;
+
+      if (!playerIdToUse) {
+        setKnockoutPredictions({});
+        setHasSubmittedKnockoutRound(false);
+        return;
+      }
+
+      const savedPredictions = await fetchKnockoutPredictionsByPlayer(
+        playerIdToUse
+      );
+
+      const matchIds = new Set(matches.map((match) => match.id));
+      const currentRoundPredictions = savedPredictions.filter((prediction) =>
+        matchIds.has(prediction.match_id)
+      );
+
+      const mappedPredictions: KnockoutPredictionMap = {};
+
+      currentRoundPredictions.forEach((prediction) => {
+        mappedPredictions[prediction.match_id] =
+          prediction.predicted_winner_team_id;
+      });
+
+      setKnockoutPredictions(mappedPredictions);
+      setHasSubmittedKnockoutRound(
+        currentRoundPredictions.some((prediction) => prediction.submitted)
+      );
     } catch (error) {
       console.error(error);
       setMessage("Error al cargar la ronda activa");
@@ -344,6 +388,7 @@ export default function Home() {
     setActiveSection("inicio");
 
     await loadSavedPredictions(player.id);
+    await loadActiveKnockoutData(player.id);
 
     if (player.submitted) {
       await loadSubmittedPredictions();
@@ -708,6 +753,123 @@ export default function Home() {
     setMessage("Partido de eliminatoria guardado correctamente");
   }
 
+  function updateKnockoutPrediction(matchId: string, teamId: string) {
+    setKnockoutPredictions((prev) => ({
+      ...prev,
+      [matchId]: teamId,
+    }));
+  }
+
+  async function saveSingleKnockoutPrediction(matchId: string) {
+    if (!loggedPlayerId) {
+      setMessage("No hay jugador iniciado");
+      return;
+    }
+
+    if (!activeKnockoutRound) {
+      setMessage("No hay ronda activa");
+      return;
+    }
+
+    if (activeKnockoutRound.status !== "open") {
+      setMessage("La ronda no está abierta");
+      return;
+    }
+
+    if (hasSubmittedKnockoutRound) {
+      setMessage("Ya enviaste esta ronda y está bloqueada");
+      return;
+    }
+
+    const predictedWinnerTeamId = knockoutPredictions[matchId];
+
+    if (!predictedWinnerTeamId) {
+      setMessage("Selecciona un ganador para este partido");
+      return;
+    }
+
+    try {
+      await saveKnockoutPrediction({
+        playerId: loggedPlayerId,
+        matchId,
+        predictedWinnerTeamId,
+        submitted: false,
+        submittedAt: null,
+      });
+    } catch (error) {
+      console.error(error);
+      setMessage("Error al guardar pick de eliminatoria");
+      return;
+    }
+
+    setMessage("Pick guardado correctamente");
+  }
+
+  async function submitKnockoutRoundPredictions() {
+    if (!loggedPlayerId) {
+      setMessage("No hay jugador iniciado");
+      return;
+    }
+
+    if (!activeKnockoutRound) {
+      setMessage("No hay ronda activa");
+      return;
+    }
+
+    if (activeKnockoutRound.status !== "open") {
+      setMessage("La ronda no está abierta");
+      return;
+    }
+
+    if (hasSubmittedKnockoutRound) {
+      setMessage("Ya enviaste esta ronda");
+      return;
+    }
+
+    if (activeKnockoutMatches.length === 0) {
+      setMessage("No hay partidos cargados para esta ronda");
+      return;
+    }
+
+    const missingMatch = activeKnockoutMatches.find(
+      (match) => !knockoutPredictions[match.id]
+    );
+
+    if (missingMatch) {
+      setMessage(`Falta elegir ganador del partido ${missingMatch.match_number}`);
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `¿Seguro que quieres enviar tus picks de ${activeKnockoutRound.name}? Después ya no podrás modificarlos.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+
+    for (const match of activeKnockoutMatches) {
+      try {
+        await saveKnockoutPrediction({
+          playerId: loggedPlayerId,
+          matchId: match.id,
+          predictedWinnerTeamId: knockoutPredictions[match.id],
+          submitted: true,
+          submittedAt: now,
+        });
+      } catch (error) {
+        console.error(error);
+        setMessage("Error al enviar picks de eliminatoria");
+        return;
+      }
+    }
+
+    setHasSubmittedKnockoutRound(true);
+    setMessage(`${activeKnockoutRound.name} enviada correctamente`);
+  }
+
   if (loggedUser) {
     return (
       <main className={ui.page}>
@@ -742,7 +904,12 @@ export default function Home() {
             <CurrentPhaseSection
               activeRound={activeKnockoutRound}
               matches={activeKnockoutMatches}
-              onRefresh={loadActiveKnockoutData}
+              predictions={knockoutPredictions}
+              hasSubmittedRound={hasSubmittedKnockoutRound}
+              onPredictionChange={updateKnockoutPrediction}
+              onSavePrediction={saveSingleKnockoutPrediction}
+              onSubmitRound={submitKnockoutRoundPredictions}
+              onRefresh={() => loadActiveKnockoutData()}
               onGoToHistory={() => setActiveSection("historial")}
               getTeamName={getTeamName}
             />

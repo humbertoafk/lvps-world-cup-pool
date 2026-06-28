@@ -21,6 +21,42 @@ type CurrentPhaseSectionProps = {
   getTeamName: (teamId: string | null | undefined) => string;
 };
 
+function getRoundMessage(activeRound: KnockoutRound) {
+  if (activeRound.status === "open") {
+    return "Elige el ganador de cada partido y envía tus picks antes de que cierre la ronda.";
+  }
+
+  if (activeRound.status === "closed") {
+    return "La ronda está cerrada. Ya no se pueden enviar ni modificar picks. Esperando resultados oficiales.";
+  }
+
+  if (activeRound.status === "completed") {
+    return "Esta ronda ya fue completada. Puedes consultar sus resultados en Historial.";
+  }
+
+  if (activeRound.status === "archived") {
+    return "Esta ronda ya quedó archivada. Puedes consultarla desde Historial.";
+  }
+
+  return "Esta ronda todavía no está disponible.";
+}
+
+function getStatusColor(status: KnockoutRound["status"]) {
+  if (status === "open") {
+    return "bg-green-950/40 text-green-400";
+  }
+
+  if (status === "closed") {
+    return "bg-yellow-950/40 text-yellow-400";
+  }
+
+  if (status === "completed" || status === "archived") {
+    return "bg-neutral-800 text-neutral-300";
+  }
+
+  return "bg-neutral-800 text-neutral-400";
+}
+
 export function CurrentPhaseSection({
   activeRound,
   matches,
@@ -38,7 +74,7 @@ export function CurrentPhaseSection({
       <div className="space-y-4">
         <div className={ui.card}>
           <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-            Quiniela actual
+            Jugar
           </p>
 
           <h2 className="mt-1 text-2xl font-bold">Sin ronda activa</h2>
@@ -68,6 +104,8 @@ export function CurrentPhaseSection({
   }
 
   const isRoundOpen = activeRound.status === "open";
+  const canEdit = isRoundOpen && !hasSubmittedRound;
+  const roundMessage = getRoundMessage(activeRound);
 
   return (
     <div className="space-y-4">
@@ -75,18 +113,19 @@ export function CurrentPhaseSection({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Quiniela actual
+              Jugar
             </p>
 
             <h2 className="mt-1 text-2xl font-bold">{activeRound.name}</h2>
 
-            <p className="mt-2 text-sm text-neutral-400">
-              Elige el ganador de cada partido. Solo se puede jugar la ronda
-              activa.
-            </p>
+            <p className="mt-2 text-sm text-neutral-400">{roundMessage}</p>
           </div>
 
-          <span className="rounded bg-green-950/40 px-2 py-1 text-xs font-semibold text-green-400">
+          <span
+            className={`rounded px-2 py-1 text-xs font-semibold ${getStatusColor(
+              activeRound.status
+            )}`}
+          >
             {getKnockoutStatusLabel(activeRound.status)}
           </span>
         </div>
@@ -94,6 +133,19 @@ export function CurrentPhaseSection({
         {hasSubmittedRound && (
           <div className="mt-4 rounded border border-green-700 bg-green-950/30 p-3 text-sm text-green-400">
             Ya enviaste tus picks de esta ronda. No puedes modificarlos.
+          </div>
+        )}
+
+        {activeRound.status === "closed" && (
+          <div className="mt-4 rounded border border-yellow-700 bg-yellow-950/30 p-3 text-sm text-yellow-400">
+            Ronda cerrada. Esperando captura de resultados oficiales.
+          </div>
+        )}
+
+        {activeRound.status === "completed" && (
+          <div className="mt-4 rounded border border-neutral-700 bg-neutral-900 p-3 text-sm text-neutral-300">
+            Ronda completada. Revisa el historial para consultar partidos y
+            ganadores.
           </div>
         )}
 
@@ -113,7 +165,7 @@ export function CurrentPhaseSection({
 
           <div className={ui.innerCard}>
             <p className="text-xs text-neutral-500">Estado</p>
-            <p className="mt-1 text-lg font-bold text-green-400">
+            <p className="mt-1 text-lg font-bold">
               {getKnockoutStatusLabel(activeRound.status)}
             </p>
           </div>
@@ -151,9 +203,7 @@ export function CurrentPhaseSection({
                   <div className="mt-3 grid grid-cols-1 gap-2">
                     <button
                       type="button"
-                      disabled={
-                        !isRoundOpen || hasSubmittedRound || !match.team_a_id
-                      }
+                      disabled={!canEdit || !match.team_a_id}
                       onClick={() =>
                         match.team_a_id &&
                         onPredictionChange(match.id, match.team_a_id)
@@ -169,9 +219,7 @@ export function CurrentPhaseSection({
 
                     <button
                       type="button"
-                      disabled={
-                        !isRoundOpen || hasSubmittedRound || !match.team_b_id
-                      }
+                      disabled={!canEdit || !match.team_b_id}
                       onClick={() =>
                         match.team_b_id &&
                         onPredictionChange(match.id, match.team_b_id)
@@ -187,7 +235,7 @@ export function CurrentPhaseSection({
                   </div>
 
                   <button
-                    disabled={!isRoundOpen || hasSubmittedRound}
+                    disabled={!canEdit}
                     onClick={() => onSavePrediction(match.id)}
                     className="mt-3 w-full rounded bg-green-600 p-2 text-sm font-semibold text-white disabled:bg-neutral-700 disabled:text-neutral-400"
                   >
@@ -209,27 +257,36 @@ export function CurrentPhaseSection({
       {matches.length > 0 && (
         <div className={ui.card}>
           <button
-            disabled={!isRoundOpen || hasSubmittedRound}
+            disabled={!canEdit}
             onClick={onSubmitRound}
             className={ui.buttonSubmit}
           >
             Enviar {activeRound.name}
           </button>
 
-          <p className="mt-2 text-xs text-neutral-500">
-            Después de enviar esta ronda, tus picks quedarán bloqueados.
-          </p>
+          {canEdit ? (
+            <p className="mt-2 text-xs text-neutral-500">
+              Después de enviar esta ronda, tus picks quedarán bloqueados.
+            </p>
+          ) : hasSubmittedRound ? (
+            <p className="mt-2 text-xs text-green-400">
+              Tus picks de esta ronda ya fueron enviados.
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-yellow-400">
+              Esta ronda no está abierta para edición.
+            </p>
+          )}
         </div>
       )}
 
       <div className={ui.card}>
-        <h3 className="mb-2 font-bold">Cómo funcionará</h3>
+        <h3 className="mb-2 font-bold">Funcionamiento</h3>
 
         <div className="space-y-2 text-sm text-neutral-300">
-          <p>1. Solo se puede predecir la ronda activa.</p>
-          <p>2. Cuando terminen 16vos, se abrirán 8vos.</p>
-          <p>3. Los puntos de eliminatoria van separados de grupos.</p>
-          <p>4. La fase de grupos sigue disponible en Historial.</p>
+          <p>Solo se puede predecir la ronda activa.</p>
+          <p>Cada ganador acertado vale 5 puntos.</p>
+          <p>Los puntos de eliminatoria no se suman con fase de grupos.</p>
         </div>
 
         <button onClick={onGoToHistory} className={`mt-4 ${ui.buttonSmall}`}>

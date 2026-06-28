@@ -15,6 +15,8 @@ import { RulesCard } from "@/components/RulesCard";
 import { KnockoutAdminPanel } from "@/components/KnockoutAdminPanel";
 import { SubmittedPredictionsSection } from "@/components/SubmittedPredictionsSection";
 import { fetchKnockoutPredictionsByPlayer } from "@/services/knockoutReads";
+import { KnockoutRankingSection } from "@/components/KnockoutRankingSection";
+import { fetchKnockoutRankingRows } from "@/services/knockoutRankingService";
 import {
   saveKnockoutMatch,
   saveKnockoutPrediction,
@@ -63,6 +65,7 @@ import { getTeamNameFromGroups } from "@/utils/teams";
 import type {
   KnockoutMatch,
   KnockoutPredictionMap,
+  KnockoutRankingRow,
   KnockoutRound,
 } from "@/types/knockout";
 import {
@@ -112,6 +115,10 @@ export default function Home() {
   const [hasSubmittedKnockoutRound, setHasSubmittedKnockoutRound] =
     useState(false);
 
+  const [knockoutRanking, setKnockoutRanking] = useState<KnockoutRankingRow[]>(
+    []
+  );
+
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isQuinielaOpen, setIsQuinielaOpen] = useState(true);
@@ -123,6 +130,7 @@ export default function Home() {
     loadTeams();
     loadAppSettings();
     loadActiveKnockoutData();
+    loadKnockoutRanking();
 
     Promise.all([loadGroups(), loadGroupResults()]).then(
       ([loadedGroups, loadedResults]) => {
@@ -917,6 +925,7 @@ export default function Home() {
     }
 
     await loadActiveKnockoutData();
+    await loadKnockoutRanking();
 
     setKnockoutWinnersByMatch((prev) => ({
       ...prev,
@@ -924,6 +933,16 @@ export default function Home() {
     }));
 
     setMessage("Ganador de eliminatoria guardado correctamente");
+  }
+
+  async function loadKnockoutRanking() {
+    try {
+      const rankingRows = await fetchKnockoutRankingRows();
+      setKnockoutRanking(rankingRows);
+    } catch (error) {
+      console.error(error);
+      setMessage("Error al cargar ranking de eliminatoria");
+    }
   }
 
   if (loggedUser) {
@@ -949,11 +968,31 @@ export default function Home() {
           )}
 
           {activeSection === "ranking" && (
-            <RankingSection
-              ranking={ranking}
-              onRefresh={() => loadRanking()}
-              getTeamName={getTeamName}
-            />
+            <div className="space-y-6">
+              <div className={ui.card}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  Rankings separados
+                </p>
+          
+                <h2 className="mt-1 text-2xl font-bold">Ranking</h2>
+          
+                <p className="mt-2 text-sm text-neutral-400">
+                  La fase de grupos y la eliminatoria se calculan por separado. No hay
+                  total combinado.
+                </p>
+              </div>
+          
+              <RankingSection
+                ranking={ranking}
+                onRefresh={() => loadRanking()}
+                getTeamName={getTeamName}
+              />
+          
+              <KnockoutRankingSection
+                ranking={knockoutRanking}
+                onRefresh={loadKnockoutRanking}
+              />
+            </div>
           )}
 
           {activeSection === "actual" && (

@@ -8,7 +8,6 @@ import { CurrentPhaseSection } from "@/components/CurrentPhaseSection";
 import { DashboardSection } from "@/components/DashboardSection";
 import { LoginCard } from "@/components/LoginCard";
 import { MessagesArea } from "@/components/MessagesArea";
-import { PhaseHistorySection } from "@/components/PhaseHistorySection";
 import { RankingSection } from "@/components/RankingSection";
 import { ResultsSection } from "@/components/ResultsSection";
 import { RulesCard } from "@/components/RulesCard";
@@ -1253,19 +1252,11 @@ export default function Home() {
           )}
 
           {activeSection === "historial" && (
-            <div className="space-y-6">
-              <PhaseHistorySection
-                onGoToGroupRanking={() => setActiveSection("ranking")}
-                onGoToGroupResults={() => setActiveSection("resultados")}
-                onGoToGroupPicks={() => setActiveSection("picks")}
-              />
-
               <KnockoutHistorySection
                 rounds={knockoutRounds}
                 matches={allKnockoutMatches}
                 getTeamName={getTeamName}
               />
-            </div>
           )}
 
           {activeSection === "resultados" && (

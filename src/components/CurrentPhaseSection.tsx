@@ -2,6 +2,7 @@
 
 import { ui } from "@/styles/ui";
 import type { KnockoutMatch, KnockoutRound } from "@/types/knockout";
+import { getKnockoutStatusLabel } from "@/utils/knockoutStatus";
 
 type CurrentPhaseSectionProps = {
   activeRound: KnockoutRound | null;
@@ -70,7 +71,7 @@ export function CurrentPhaseSection({
           </div>
 
           <span className="rounded bg-green-950/40 px-2 py-1 text-xs font-semibold text-green-400">
-            {activeRound.status}
+            {getKnockoutStatusLabel(activeRound.status)}
           </span>
         </div>
 
@@ -90,7 +91,9 @@ export function CurrentPhaseSection({
 
           <div className={ui.innerCard}>
             <p className="text-xs text-neutral-500">Estado</p>
-            <p className="mt-1 text-lg font-bold text-green-400">Abierta</p>
+            <p className="mt-1 text-lg font-bold text-green-400">
+              {getKnockoutStatusLabel(activeRound.status)}
+            </p>
           </div>
         </div>
       </div>

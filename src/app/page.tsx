@@ -12,6 +12,8 @@ import { PhaseHistorySection } from "@/components/PhaseHistorySection";
 import { RankingSection } from "@/components/RankingSection";
 import { ResultsSection } from "@/components/ResultsSection";
 import { RulesCard } from "@/components/RulesCard";
+import { KnockoutAdminPanel } from "@/components/KnockoutAdminPanel";
+import { saveKnockoutMatch } from "@/services/knockoutWrites";
 import { SubmittedPredictionsSection } from "@/components/SubmittedPredictionsSection";
 import {
   fetchGroupResults,
@@ -87,6 +89,10 @@ export default function Home() {
   const [activeKnockoutMatches, setActiveKnockoutMatches] = useState<
     KnockoutMatch[]
   >([]);
+
+  const [knockoutMatchNumber, setKnockoutMatchNumber] = useState("");
+  const [knockoutTeamAId, setKnockoutTeamAId] = useState("");
+  const [knockoutTeamBId, setKnockoutTeamBId] = useState("");
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -654,6 +660,54 @@ export default function Home() {
     setMessage("Quiniela enviada correctamente. Ya no puedes modificarla.");
   }
 
+  async function handleSaveKnockoutMatch() {
+    if (!isAdmin) {
+      setMessage("No tienes permisos de administrador");
+      return;
+    }
+  
+    if (!activeKnockoutRound) {
+      setMessage("No hay ronda activa de eliminatoria");
+      return;
+    }
+  
+    if (!knockoutMatchNumber) {
+      setMessage("Escribe el número de partido");
+      return;
+    }
+  
+    if (!knockoutTeamAId || !knockoutTeamBId) {
+      setMessage("Selecciona los dos equipos del partido");
+      return;
+    }
+  
+    if (knockoutTeamAId === knockoutTeamBId) {
+      setMessage("No puedes seleccionar el mismo equipo dos veces");
+      return;
+    }
+  
+    try {
+      await saveKnockoutMatch({
+        roundId: activeKnockoutRound.id,
+        matchNumber: Number(knockoutMatchNumber),
+        teamAId: knockoutTeamAId,
+        teamBId: knockoutTeamBId,
+      });
+    } catch (error) {
+      console.error(error);
+      setMessage("Error al guardar partido de eliminatoria");
+      return;
+    }
+  
+    setKnockoutMatchNumber("");
+    setKnockoutTeamAId("");
+    setKnockoutTeamBId("");
+  
+    await loadActiveKnockoutData();
+  
+    setMessage("Partido de eliminatoria guardado correctamente");
+  }
+
   if (loggedUser) {
     return (
       <main className={ui.page}>
@@ -726,20 +780,37 @@ export default function Home() {
           )}
 
           {isAdmin && activeSection === "admin" && (
-            <AdminPanel
-              players={players}
-              groups={groups}
-              teamsByGroup={teamsByGroup}
-              groupResults={groupResults}
-              isQuinielaOpen={isQuinielaOpen}
-              adminSelectedPlayerId={adminSelectedPlayerId}
-              onAdminSelectedPlayerChange={setAdminSelectedPlayerId}
-              onToggleQuinielaOpen={toggleQuinielaOpen}
-              onUnlockPlayerSubmission={unlockPlayerSubmission}
-              onRefreshRanking={() => loadRanking()}
-              onUpdateGroupResult={updateGroupResult}
-              onSaveGroupResult={saveGroupResult}
-            />
+            <div className="space-y-6">
+              <AdminPanel
+                players={players}
+                groups={groups}
+                teamsByGroup={teamsByGroup}
+                groupResults={groupResults}
+                isQuinielaOpen={isQuinielaOpen}
+                adminSelectedPlayerId={adminSelectedPlayerId}
+                onAdminSelectedPlayerChange={setAdminSelectedPlayerId}
+                onToggleQuinielaOpen={toggleQuinielaOpen}
+                onUnlockPlayerSubmission={unlockPlayerSubmission}
+                onRefreshRanking={() => loadRanking()}
+                onUpdateGroupResult={updateGroupResult}
+                onSaveGroupResult={saveGroupResult}
+              />
+
+              <KnockoutAdminPanel
+                activeRound={activeKnockoutRound}
+                matches={activeKnockoutMatches}
+                teamsByGroup={teamsByGroup}
+                matchNumber={knockoutMatchNumber}
+                teamAId={knockoutTeamAId}
+                teamBId={knockoutTeamBId}
+                onMatchNumberChange={setKnockoutMatchNumber}
+                onTeamAChange={setKnockoutTeamAId}
+                onTeamBChange={setKnockoutTeamBId}
+                onSaveMatch={handleSaveKnockoutMatch}
+                onRefresh={loadActiveKnockoutData}
+                getTeamName={getTeamName}
+              />
+            </div>
           )}
         </div>
 

@@ -53,6 +53,11 @@ import {
   saveSession,
 } from "@/utils/session";
 import { getTeamNameFromGroups } from "@/utils/teams";
+import type { KnockoutMatch, KnockoutRound } from "@/types/knockout";
+import {
+  fetchActiveKnockoutRound,
+  fetchKnockoutMatchesByRound,
+} from "@/services/knockoutReads";
 import bcrypt from "bcryptjs";
 
 export default function Home() {
@@ -76,6 +81,13 @@ export default function Home() {
     SubmittedPredictionRow[]
   >([]);
 
+  const [activeKnockoutRound, setActiveKnockoutRound] =
+  useState<KnockoutRound | null>(null);
+
+  const [activeKnockoutMatches, setActiveKnockoutMatches] = useState<
+    KnockoutMatch[]
+  >([]);
+
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isQuinielaOpen, setIsQuinielaOpen] = useState(true);
@@ -86,6 +98,7 @@ export default function Home() {
     loadPlayers();
     loadTeams();
     loadAppSettings();
+    loadActiveKnockoutData();
 
     Promise.all([loadGroups(), loadGroupResults()]).then(
       ([loadedGroups, loadedResults]) => {
@@ -216,6 +229,25 @@ export default function Home() {
     } catch (error) {
       console.error(error);
       setMessage("Error al cargar pronósticos enviados");
+    }
+  }
+
+  async function loadActiveKnockoutData() {
+    try {
+      const activeRound = await fetchActiveKnockoutRound();
+
+      setActiveKnockoutRound(activeRound);
+
+      if (!activeRound) {
+        setActiveKnockoutMatches([]);
+        return;
+      }
+
+      const matches = await fetchKnockoutMatchesByRound(activeRound.id);
+      setActiveKnockoutMatches(matches);
+    } catch (error) {
+      console.error(error);
+      setMessage("Error al cargar la ronda activa");
     }
   }
 
@@ -654,7 +686,11 @@ export default function Home() {
 
           {activeSection === "actual" && (
             <CurrentPhaseSection
+              activeRound={activeKnockoutRound}
+              matches={activeKnockoutMatches}
+              onRefresh={loadActiveKnockoutData}
               onGoToHistory={() => setActiveSection("historial")}
+              getTeamName={getTeamName}
             />
           )}
 
